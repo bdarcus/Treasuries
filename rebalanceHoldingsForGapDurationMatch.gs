@@ -30,6 +30,11 @@ function rebalanceHoldingsForGapDurationMatch() {
   const DARA = inputsSheet.getRange('B1').getValue();
   Logger.log('DARA (from Inputs): ' + DARA);
   
+  // ─── Get rebalance method from Inputs!B2 ───
+  const rebalanceMethod = inputsSheet.getRange('B2').getValue();
+  const isFullMode = (rebalanceMethod === 'Full');
+  Logger.log('Rebalance method: ' + rebalanceMethod + ' (isFullMode: ' + isFullMode + ')');
+  
   // ─── Look up refCPI for settlement date ───
   const refCPI = lookupRefCPI(settlementDate, refCPIData);
   Logger.log('RefCPI: ' + refCPI);
@@ -259,12 +264,28 @@ function rebalanceHoldingsForGapDurationMatch() {
     };
   }
   
-  // ─── V2: Rebalance years — former gap years between lower bracket and current gap ───
+  // ─── Rebalance years — determined by mode ───
   const minGapYear = Math.min(...gapYears);
-  const rebalanceYears = Object.keys(yearInfo)
-    .map(Number)
-    .filter(y => y > brackets.lowerYear && y < minGapYear)
-    .sort((a, b) => b - a); // longest to shortest
+  const bracketYears = new Set([brackets.lowerYear, brackets.upperYear]);
+  const gapYearSet = new Set(gapYears);
+  
+  let rebalanceYears;
+  if (isFullMode) {
+    // All main ladder years except brackets and current gap years
+    rebalanceYears = [];
+    for (let y = firstYear; y <= lastYear; y++) {
+      if (!bracketYears.has(y) && !gapYearSet.has(y) && yearInfo[y]) {
+        rebalanceYears.push(y);
+      }
+    }
+    rebalanceYears.sort((a, b) => b - a); // longest to shortest
+  } else {
+    // Original: former gap years between lower bracket and current gap
+    rebalanceYears = Object.keys(yearInfo)
+      .map(Number)
+      .filter(y => y > brackets.lowerYear && y < minGapYear)
+      .sort((a, b) => b - a); // longest to shortest
+  }
   
   Logger.log('Rebalance years: ' + rebalanceYears.join(', '));
   
@@ -558,6 +579,7 @@ function rebalanceHoldingsForGapDurationMatch() {
     ['  RefCPI', refCPI, '', ''],
     ['  DARA', DARA, '', ''],
     ['  Inferred DARA', inferredDARA, '', ''],
+    ['  Rebalance Method', rebalanceMethod, '', ''],
     ['  First Year', firstYear, '', ''],
     ['  Last Year', lastYear, '', ''],
     ['  Rungs', rungCount, '', ''],
