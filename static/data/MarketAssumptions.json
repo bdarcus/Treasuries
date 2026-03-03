@@ -2,12 +2,11 @@
   "updatedAt": "2026-03-01",
   "assumptions": {
     "globalEquities": {
-      "nominalReturn": 0.058,
+      "realReturn": 0.037,
       "volatility": 0.16
     },
     "tips": {
-      "realReturn": 0.019,
-      "nominalReturn": 0.040
+      "realReturn": 0.019
     },
     "inflation": 0.021,
     "cash": 0.045

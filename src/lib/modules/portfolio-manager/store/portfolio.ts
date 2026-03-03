@@ -1,8 +1,8 @@
 import { writable, derived, get } from 'svelte/store';
 
 export interface MarketAssumptions {
-	equityReturn: number;
-	tipsReturn: number;
+	equityRealReturn: number;
+	tipsRealReturn: number;
 	inflation: number;
 	updatedAt: string;
 }
@@ -23,8 +23,8 @@ const DEFAULT_STATE: PortfolioState = {
 	expectedPortfolioYield: 0.02, // 2% default yield
 	bequestTarget: 0,
 	marketAssumptions: {
-		equityReturn: 0.058,
-		tipsReturn: 0.019,
+		equityRealReturn: 0.037, // Elm Wealth-ish real return estimate
+		tipsRealReturn: 0.019,
 		inflation: 0.021,
 		updatedAt: '2026-03-01'
 	},
@@ -47,8 +47,8 @@ function createPortfolioStore() {
 				update(s => ({
 					...s,
 					marketAssumptions: {
-						equityReturn: data.assumptions.globalEquities.nominalReturn,
-						tipsReturn: data.assumptions.tips.realReturn, // We want the REAL return for TIPS
+						equityRealReturn: data.assumptions.globalEquities.realReturn,
+						tipsRealReturn: data.assumptions.tips.realReturn,
 						inflation: data.assumptions.inflation,
 						updatedAt: data.updatedAt
 					}
@@ -88,20 +88,11 @@ export const portfolioStore = createPortfolioStore();
 
 /**
  * Derived store that calculates the weighted expected REAL return.
- * Logic: We combine nominal returns, then adjust for inflation.
+ * Since all inputs are now real, this is a simple linear combination.
  */
 export const expectedRealReturn = derived(portfolioStore, ($state) => {
-	const nominalEquity = $state.marketAssumptions.equityReturn;
-	const realTips = $state.marketAssumptions.tipsReturn;
-	const inflation = $state.marketAssumptions.inflation;
+	const realEquity = $state.marketAssumptions.equityRealReturn;
+	const realTips = $state.marketAssumptions.tipsRealReturn;
 
-	// Nominal return of the portfolio
-	// For equities, we have the nominal return.
-	// For TIPS, we have the REAL return, so nominal = (1+real)*(1+infl) - 1
-	const nominalTips = (1 + realTips) * (1 + inflation) - 1;
-	
-	const portfolioNominal = ($state.equityAllocation * nominalEquity) + ((1 - $state.equityAllocation) * nominalTips);
-	
-	// Real return = (1 + nominal) / (1 + inflation) - 1
-	return (1 + portfolioNominal) / (1 + inflation) - 1;
+	return ($state.equityAllocation * realEquity) + ((1 - $state.equityAllocation) * realTips);
 });

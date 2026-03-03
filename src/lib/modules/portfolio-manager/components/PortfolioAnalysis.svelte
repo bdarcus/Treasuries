@@ -60,12 +60,12 @@
 			<h4 class="font-bold text-slate-900 mb-4">Assumptions Layer</h4>
 			<div class="space-y-4">
 				<div class="flex justify-between text-sm">
-					<span class="text-slate-500">Nominal Equity Return</span>
-					<span class="font-mono font-bold">{(state.marketAssumptions.equityReturn * 100).toFixed(1)}%</span>
+					<span class="text-slate-500">Real Equity Return</span>
+					<span class="font-mono font-bold">{(state.marketAssumptions.equityRealReturn * 100).toFixed(1)}%</span>
 				</div>
 				<div class="flex justify-between text-sm">
 					<span class="text-slate-500">Real TIPS Return</span>
-					<span class="font-mono font-bold">{(state.marketAssumptions.tipsReturn * 100).toFixed(1)}%</span>
+					<span class="font-mono font-bold">{(state.marketAssumptions.tipsRealReturn * 100).toFixed(1)}%</span>
 				</div>
 				<div class="flex justify-between text-sm border-t pt-4">
 					<span class="text-slate-900 font-bold">Expected Portfolio Real Return</span>
