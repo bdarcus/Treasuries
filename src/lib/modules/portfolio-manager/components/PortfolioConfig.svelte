@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { portfolioStore, expectedRealReturn } from '../store/portfolio';
+	import { portfolioStore, expectedRealReturn, expectedRealYield } from '../store/portfolio';
 	import { formatCurrency } from '../../../shared/financial';
 	import { planningHorizon } from '../../../shared/planning';
 
@@ -7,12 +7,14 @@
 
 	let state = $derived($portfolioStore);
 	let realReturn = $derived($expectedRealReturn);
+	let realYield = $derived($expectedRealYield);
 
 	let calculated = $derived.by(() => {
 		// Explicitly reference stores to establish Svelte 5 reactive dependencies
 		const _s = $portfolioStore;
 		const _h = $planningHorizon;
 		const _r = $expectedRealReturn;
+		const _y = $expectedRealYield;
 
 		const mod = registry.getModule('portfolio-manager');
 		return mod?.engine.calculate({});
@@ -38,22 +40,24 @@
 		portfolioStore.update(s => ({ ...s, bequestTarget: val }));
 	}
 
-	function updateYield(e: Event) {
-		const val = parseFloat((e.target as HTMLInputElement).value) / 100;
-		portfolioStore.update(s => ({ ...s, expectedPortfolioYield: val }));
-	}
-
 	function updateRetirement(e: Event) {
 		const val = parseInt((e.target as HTMLInputElement).value);
 		portfolioStore.update(s => ({ ...s, retirementYear: val }));
 	}
 
 	let saved = $state(false);
+	let refreshing = $state(false);
 
 	function handleSave() {
 		portfolioStore.save(state);
 		saved = true;
 		setTimeout(() => saved = false, 2000);
+	}
+
+	async function refreshAssumptions() {
+		refreshing = true;
+		await portfolioStore.fetchAssumptions();
+		setTimeout(() => refreshing = false, 1000);
 	}
 </script>
 
@@ -79,16 +83,6 @@
 			</div>
 
 			<div class="space-y-2">
-				<label for="yield" class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Expected Portfolio Yield (%)</label>
-				<div class="flex items-center space-x-4">
-					<input type="range" id="yield" min="0" max="10" step="0.1" value={state.expectedPortfolioYield * 100} oninput={updateYield}
-						class="flex-1 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
-					<span class="font-mono font-bold text-emerald-600 w-12 text-right">{(state.expectedPortfolioYield * 100).toFixed(1)}%</span>
-				</div>
-				<p class="text-[10px] text-slate-400 mt-1 italic">Dividends and interest (passive income portion).</p>
-			</div>
-
-			<div class="space-y-2">
 				<label for="bequest" class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Bequest Target (Future $)</label>
 				<input type="number" id="bequest" value={state.bequestTarget} oninput={updateBequest} 
 					class="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500 text-sm" />
@@ -111,13 +105,29 @@
 			</div>
 		</div>
 
-		<div class="pt-6 border-t border-slate-100">
+		<div class="pt-6 border-t border-slate-100 space-y-4">
+			<div class="flex justify-between items-center">
+				<h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Market Assumptions</h3>
+				<button 
+					onclick={refreshAssumptions}
+					class="text-[10px] font-bold text-blue-600 hover:text-blue-500 flex items-center {refreshing ? 'animate-pulse' : ''}"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.72 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.72 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+					{refreshing ? 'REFRESHING...' : 'REFRESH'}
+				</button>
+			</div>
 			<div class="bg-slate-900 text-white rounded-xl p-6 shadow-lg space-y-4">
-				<div>
-					<div class="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Expected Real Return</div>
-					<div class="font-serif text-3xl font-bold">{(realReturn * 100).toFixed(2)}%</div>
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<div class="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Expected Real Return</div>
+						<div class="font-serif text-2xl font-bold">{(realReturn * 100).toFixed(2)}%</div>
+					</div>
+					<div>
+						<div class="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">Passive Real Yield</div>
+						<div class="font-serif text-2xl font-bold">{(realYield * 100).toFixed(2)}%</div>
+					</div>
 				</div>
-				<p class="text-[10px] text-slate-400 leading-relaxed">Based on Elm Wealth market assumptions for Equities and TIPS.</p>
+				<p class="text-[10px] text-slate-400 leading-relaxed pt-2 border-t border-white/10">Updated: {state.marketAssumptions.updatedAt}</p>
 			</div>
 		</div>
 
@@ -147,7 +157,7 @@
 				<div class="text-center">
 					<div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mb-2">Sustainable Real Income</div>
 					<div class="text-5xl font-serif font-bold text-blue-900">
-						{formatCurrency((state.balance * realReturn) / (1 - Math.pow(1 + realReturn, -(state.retirementYear - new Date().getFullYear()))))}
+						{formatCurrency(calculated?.amortizationIncome || 0)}
 					</div>
 					<div class="text-xs font-bold text-blue-600 mt-2 uppercase tracking-widest">per year (inflation adjusted)</div>
 				</div>

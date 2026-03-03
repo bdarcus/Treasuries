@@ -1,5 +1,5 @@
 import { derived, get } from 'svelte/store';
-import { portfolioStore, expectedRealReturn, type PortfolioState } from './store/portfolio';
+import { portfolioStore, expectedRealReturn, expectedRealYield, type PortfolioState } from './store/portfolio';
 import { calculateConstantAmortization, projectPortfolio } from './engine/amortization';
 import { planningHorizon } from '../../shared/planning';
 import type { FinancialModule, ProjectionData } from '../../core/types';
@@ -23,11 +23,11 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 		save: portfolioStore.save,
 		load: portfolioStore.load,
 		reset: portfolioStore.reset,
-		publicData: derived([portfolioStore, expectedRealReturn], ([$state, $realReturn]) => ({
+		publicData: derived([portfolioStore, expectedRealReturn, expectedRealYield], ([$state, $realReturn, $realYield]) => ({
 			totalBalance: $state.balance,
 			equityAllocation: $state.equityAllocation,
 			expectedRealReturn: $realReturn,
-			expectedPortfolioYield: $state.expectedPortfolioYield,
+			expectedRealYield: $realYield,
 			bequestTarget: $state.bequestTarget
 		}))
 	},
@@ -35,6 +35,7 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 	engine: {
 		calculate: (params) => {
 			const realRate = get(expectedRealReturn);
+			const realYield = get(expectedRealYield);
 			const state = get(portfolioStore);
 			const horizon = get(planningHorizon);
 			
@@ -44,9 +45,7 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 			const totalAmortizedIncome = calculateConstantAmortization(state.balance, realRate, Math.max(1, yearsRemaining), state.bequestTarget);
 			
 			// Breakdown of the amortized income
-			// Passive income is simply Balance * Yield
-			const passiveIncome = state.balance * state.expectedPortfolioYield;
-			// Sales is the remainder
+			const passiveIncome = state.balance * realYield;
 			const portfolioSales = Math.max(0, totalAmortizedIncome - passiveIncome);
 
 			return {
@@ -54,6 +53,7 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 				passiveIncome,
 				portfolioSales,
 				expectedRealReturn: realRate,
+				expectedRealYield: realYield,
 				horizonYear
 			};
 		},

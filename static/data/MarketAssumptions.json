@@ -3,12 +3,17 @@
   "assumptions": {
     "globalEquities": {
       "realReturn": 0.037,
+      "dividendYield": 0.021,
       "volatility": 0.16
     },
     "tips": {
-      "realReturn": 0.019
+      "realReturn": 0.019,
+      "realYield": 0.019
     },
     "inflation": 0.021,
-    "cash": 0.045
+    "cash": {
+      "realReturn": 0.005,
+      "nominalYield": 0.045
+    }
   }
 }

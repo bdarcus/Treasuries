@@ -2,7 +2,9 @@ import { writable, derived, get } from 'svelte/store';
 
 export interface MarketAssumptions {
 	equityRealReturn: number;
+	equityYield: number;
 	tipsRealReturn: number;
+	tipsRealYield: number;
 	inflation: number;
 	updatedAt: string;
 }
@@ -10,7 +12,6 @@ export interface MarketAssumptions {
 export interface PortfolioState {
 	balance: number;
 	equityAllocation: number; // 0.0 to 1.0
-	expectedPortfolioYield: number; // Passive income rate (dividends + interest)
 	bequestTarget: number;    // Future value at end of horizon
 	marketAssumptions: MarketAssumptions;
 	retirementYear: number;
@@ -20,11 +21,12 @@ export interface PortfolioState {
 const DEFAULT_STATE: PortfolioState = {
 	balance: 1000000,
 	equityAllocation: 0.6,
-	expectedPortfolioYield: 0.02, // 2% default yield
 	bequestTarget: 0,
 	marketAssumptions: {
-		equityRealReturn: 0.037, // Elm Wealth-ish real return estimate
+		equityRealReturn: 0.037,
+		equityYield: 0.021,
 		tipsRealReturn: 0.019,
+		tipsRealYield: 0.019,
 		inflation: 0.021,
 		updatedAt: '2026-03-01'
 	},
@@ -48,7 +50,9 @@ function createPortfolioStore() {
 					...s,
 					marketAssumptions: {
 						equityRealReturn: data.assumptions.globalEquities.realReturn,
+						equityYield: data.assumptions.globalEquities.dividendYield,
 						tipsRealReturn: data.assumptions.tips.realReturn,
+						tipsRealYield: data.assumptions.tips.realYield,
 						inflation: data.assumptions.inflation,
 						updatedAt: data.updatedAt
 					}
@@ -58,7 +62,6 @@ function createPortfolioStore() {
 			}
 		},
 		save: (state: PortfolioState) => {
-			console.log('Saving portfolio state:', state);
 			if (typeof localStorage !== 'undefined') {
 				localStorage.setItem('portfolio_manager_state', JSON.stringify({ ...state, isLoaded: true }));
 			}
@@ -68,7 +71,6 @@ function createPortfolioStore() {
 			if (typeof localStorage !== 'undefined') {
 				const saved = localStorage.getItem('portfolio_manager_state');
 				if (saved) {
-					// Merge with DEFAULT_STATE to handle newly added fields
 					set({ ...DEFAULT_STATE, ...JSON.parse(saved), isLoaded: true });
 					return;
 				}
@@ -88,11 +90,18 @@ export const portfolioStore = createPortfolioStore();
 
 /**
  * Derived store that calculates the weighted expected REAL return.
- * Since all inputs are now real, this is a simple linear combination.
  */
 export const expectedRealReturn = derived(portfolioStore, ($state) => {
 	const realEquity = $state.marketAssumptions.equityRealReturn;
 	const realTips = $state.marketAssumptions.tipsRealReturn;
-
 	return ($state.equityAllocation * realEquity) + ((1 - $state.equityAllocation) * realTips);
+});
+
+/**
+ * Derived store that calculates the weighted REAL yield (passive income portion).
+ */
+export const expectedRealYield = derived(portfolioStore, ($state) => {
+	const yldEquity = $state.marketAssumptions.equityYield;
+	const yldTips = $state.marketAssumptions.tipsRealYield;
+	return ($state.equityAllocation * yldEquity) + ((1 - $state.equityAllocation) * yldTips);
 });
