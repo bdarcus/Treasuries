@@ -1,47 +1,77 @@
-# TIPS Ladder Rebalancer - Development Roadmap
+# TIPS Ladder Architect - Unified Development Roadmap
 
-This document outlines a phased approach to evolving this tool from its current specialized rebalancing engine into a robust, comprehensive TIPS ladder builder.
+This document merges the specialized **Duration-Matching Innovation** with the **Modern Web App Specification**. It serves as the definitive guide for the project's evolution.
 
-## Core Philosophical Goal
-The tool should provide a "No-Build" experience (run directly in a browser from a folder) while maintaining the mathematical rigor of professional fixed-income software.
-
----
-
-### Phase 1: Foundation & Reliability (Current Focus)
-*Goal: Eliminate logic duplication and ensure correctness.*
-
-- **Shared Logic:** Consolidate the calculation engine into a single file (`rebalance-engine.js`) imported by both the CLI (`rebalance.js`) and the Web UI (`rebalance-lib.js`).
-- **Type Safety via JSDoc:** Use `// @ts-check` and `@typedef` for core types (`Bond`, `Holding`, `RebalanceResult`). 
-    - *Why?* This provides TypeScript-level safety (autocompletion, error checking) without requiring a build step or changing file extensions.
-- **Automated Testing:** Implement a `/tests` suite to verify `yieldFromPrice` and `calculateMDuration` against known Treasury benchmarks.
-- **Robust CSV Parsing:** Move away from basic `split('
-')` to a more resilient parser.
-
-### Phase 2: Functional Completeness (Version 2 & 3)
-*Goal: Implement the "Reinvestment" and "Full Rebuild" algorithms.*
-
-- **V2 (Reinvestment):** Take proceeds from bracket sales and reinvest into newly-available gap years.
-- **V3 (Full Rebuild):** Calculate an "Ideal Ladder" from scratch and compare it to current holdings to generate buy/sell orders.
-
-### Phase 3: Scope Expansion (New Investor Support)
-*Goal: Enable building new ladders from cash.*
-
-- **"Cash" as a Holding:** Treat cash positions as a source of funds for the rebalancer.
-- **Build Wizard:** Add a "New Build" mode for users starting with $0 in TIPS.
-
-### Phase 4: UX & Retention
-*Goal: Professional polish and persistence.*
-
-- **Persistence:** Use `localStorage` to save user parameters and holdings across sessions.
-- **Exporting:** Allow users to download their rebalance plan as a CSV/PDF for their brokerage.
+## 1. Core Mission
+To provide a professional-grade, privacy-first tool that simplifies TIPS ladder management through an explainable UI and a mathematically rigorous engine that handles market gaps through duration matching.
 
 ---
 
-## Technical Recommendation: The Case for TypeScript
+## 2. Technical Philosophy
+- **Framework:** SvelteKit (Static SPA mode) for robust state management without a required server.
+- **Primary Runtime:** Node.js/npm (with full Bun compatibility).
+- **Engine:** Pure JavaScript `rebalance-engine.js` (portable to Rust if high-performance simulation is required later).
+- **Persistence:** Local-first storage via `localStorage`.
+- **Transparency:** Every UI element must help the user verify the "Innovation" (e.g., visualizing how brackets cover gaps).
 
-While we are starting with JSDoc to maintain a "No-Build" environment, we should consider a full migration to TypeScript if the codebase exceeds 5,000 lines. 
+---
 
-**Benefits for this project:**
-1. **Mathematical Integrity:** TS prevents "silent failures" (e.g., adding a string to a number) which are catastrophic in financial software.
-2. **Domain Modeling:** Interfaces for `TIPS_Bond` and `Rebalance_Result` act as living documentation for complex domain logic.
-3. **Refactoring Safety:** Safely changing data structures as we move toward "Full Rebuild" mode.
+## 3. Merged Feature Set
+
+### 3.1 Design & Selection Strategies
+- **Mode: Full Rebuild.**
+- **Cheapest Strategy (Default):** Minimize total cost by prioritizing higher real-yield bonds for each rung.
+- **Smooth Strategy:** Minimize year-to-year deviation from target real income.
+- **Payment Patterns:** 
+    - January-only (Simple annual maturity).
+    - Quarterly/Semiannual coupon targeting (Planned).
+
+### 3.2 Maintenance & Gap Coverage (The Innovation)
+- **Mode: Gap Rebalance.**
+- **Duration Matching:** Mathematically bridge years where the Treasury has no maturing TIPS.
+- **Bracket Identification:** Intelligently select anchor bonds to straddle market holes.
+- **Adoption Workflow:** "Commit" a design to the portfolio to transition from planning to maintenance.
+
+### 3.3 Tracking & Analytics
+- **Visual Projection:** Bar chart of "Target" vs. "Actual" income.
+- **Funded Status:** 
+    - **Funded:** Within 2% of target.
+    - **Partial:** Coupon-only income (missing maturity).
+    - **Gap (Covered):** Synthetic coverage via duration matching.
+- **Data Abstraction:** Support for multiple data providers (Live Treasury Fetch, Broker CSVs).
+
+---
+
+## 4. Phased Roadmap
+
+### Phase 1: Foundation (Complete)
+- [x] SvelteKit Scaffolding & Tailwind CSS integration.
+- [x] Migration of the Duration-Matching Engine.
+- [x] Basic "Design", "Import", and "Track" workflows.
+- [x] Global state management & `localStorage` persistence.
+- [x] Cross-runner test compatibility (Node/npm & Bun).
+
+### Phase 2: Selection Logic & Strategy (Complete)
+- [x] Implement "Cheapest" vs. "Smooth" selection algorithms in the engine.
+- [x] Add "Exclude CUSIP" and "Maturity Range" constraints to Design mode.
+- [x] Support custom "Settlement Date" for trade simulations.
+
+### Phase 3: Advanced Cashflows & Taxes (Complete)
+- [x] Support quarterly/semiannual income targeting.
+- [x] Implement optional Tax Assumption layer (marginal rates).
+- [x] "Add Rungs" Wizard: Automated extension of a ladder's horizon.
+
+### Phase 4: Data & Export (Complete)
+- [x] PDF/Print-friendly "Trade Ticket" generation.
+- [x] Generic `TIPSDataProvider` interface for easy broker integration.
+- [x] CSV Export for all calculation views.
+
+---
+
+## 5. Architectural Highlights
+
+### The Ladder Lifecycle
+1. **Design**: Configure target years and income.
+2. **Commit**: Save the plan as your "Adopted Portfolio."
+3. **Track**: Monitor actual cash flows and funded status.
+4. **Maintain**: Run the rebalancer to bridge gaps or reinvest proceeds.

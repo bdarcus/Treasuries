@@ -5,6 +5,7 @@
   "description": "TIPS Ladder Rebalancing Engine & Web Interface",
   "main": "rebalance.js",
   "scripts": {
+    "start": "bun x serve . -l 8080",
     "test": "node --test tests/engine.test.js",
     "test:watch": "node --test --watch tests/engine.test.js"
   },
@@ -17,5 +18,9 @@
     "Rebalancing"
   ],
   "author": "aerokam",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^24.37.5",
+    "serve-handler": "^6.1.6"
+  }
 }
