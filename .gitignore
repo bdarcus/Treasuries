@@ -1,11 +1,23 @@
-# Apps Script — kept in Google Sheets, not in repo
-appsscript/
+node_modules
 
-# Auto-memory (Claude Code internal)
-memory/
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
 
-# Data — only the 3 auto-updated reference CSVs are tracked
-data/*
-!data/TipsYields.csv
-!data/RefCPI.csv
-!data/TipsRef.csv
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
