@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { portfolioStore, expectedRealReturn } from '../store/portfolio';
 	import { formatCurrency } from '../../../shared/financial';
+	import { planningHorizon } from '../../../shared/planning';
 
 	import { registry } from '../../../core/registry';
 
@@ -8,6 +9,11 @@
 	let realReturn = $derived($expectedRealReturn);
 
 	let calculated = $derived.by(() => {
+		// Explicitly reference stores to establish Svelte 5 reactive dependencies
+		const _s = $portfolioStore;
+		const _h = $planningHorizon;
+		const _r = $expectedRealReturn;
+
 		const mod = registry.getModule('portfolio-manager');
 		return mod?.engine.calculate({});
 	});

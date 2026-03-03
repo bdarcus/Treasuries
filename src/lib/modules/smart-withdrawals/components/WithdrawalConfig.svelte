@@ -22,6 +22,10 @@
 
 	// Dynamic calculation for display
 	let result = $derived.by(() => {
+		// Explicitly reference stores to establish Svelte 5 reactive dependencies
+		const _s = $planningStore;
+		const _h = $planningHorizon;
+		
 		const smartMod = registry.getModule('smart-withdrawals');
 		if (!smartMod) return null;
 		return smartMod.engine.calculate({});

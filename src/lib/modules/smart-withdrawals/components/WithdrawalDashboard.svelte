@@ -6,6 +6,10 @@
 	let state = $derived($planningStore);
 	let horizon = $derived($planningHorizon);
 	let result = $derived.by(() => {
+		// Reactive dependencies
+		const _s = $planningStore;
+		const _h = $planningHorizon;
+
 		const smartMod = registry.getModule('smart-withdrawals');
 		if (!smartMod) return null;
 		return smartMod.engine.calculate({});

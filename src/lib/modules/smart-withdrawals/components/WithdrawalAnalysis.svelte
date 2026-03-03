@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { withdrawalStore } from '../store/withdrawal';
+	import { planningStore, planningHorizon } from '../../../shared/planning';
 	import { registry } from '../../../core/registry';
 	import { formatCurrency } from '../../../shared/financial';
 
-	let state = $derived($withdrawalStore);
+	let state = $derived($planningStore);
+	let horizon = $derived($planningHorizon);
+
 	let result = $derived.by(() => {
+		// Reactive dependencies
+		const _s = $planningStore;
+		const _h = $planningHorizon;
+
 		const mod = registry.getModule('smart-withdrawals');
 		return mod?.engine.calculate({});
 	});
@@ -40,7 +46,7 @@
 			{#if years.length === 0}
 				<div class="absolute inset-0 flex items-center justify-center text-slate-300 italic">No projection data</div>
 			{:else}
-				{@const maxSpending = years[0].total * 1.2}
+				{@const maxSpending = Math.max(...years.map(y => y.total)) * 1.2}
 				{#each years as y, i}
 					<div class="flex-1 group relative flex flex-col justify-end h-full">
 						<!-- Portfolio Portion -->
@@ -78,8 +84,8 @@
 		</div>
 		<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
 			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Horizon Year</div>
-			<div class="text-2xl font-bold text-slate-900">{new Date().getFullYear() + Math.round(result?.yearsRemaining || 0)}</div>
-			<p class="text-[10px] text-slate-400 mt-1 italic">Planning until age {65 + Math.round(result?.yearsRemaining || 0)}.</p>
+			<div class="text-2xl font-bold text-slate-900">{result?.horizonYear || 'N/A'}</div>
+			<p class="text-[10px] text-slate-400 mt-1 italic">Planning horizon endpoint.</p>
 		</div>
 		<div class="bg-white p-6 rounded-2xl border border-emerald-500/30 shadow-sm shadow-emerald-50">
 			<div class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Monthly Safe Spend</div>

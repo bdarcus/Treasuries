@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { portfolioStore, expectedRealReturn } from '../store/portfolio';
+	import { planningHorizon } from '../../../shared/planning';
 	import { registry } from '../../../core/registry';
 	import { formatCurrency } from '../../../shared/financial';
 	import { onMount } from 'svelte';
@@ -8,6 +9,11 @@
 	let realRate = $derived($expectedRealReturn);
 
 	let projection = $derived.by(() => {
+		// Reactive dependencies
+		const _s = $portfolioStore;
+		const _h = $planningHorizon;
+		const _r = $expectedRealReturn;
+
 		const mod = registry.getModule('portfolio-manager');
 		return mod?.engine.project(state);
 	});
