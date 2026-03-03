@@ -1,0 +1,21 @@
+{
+  "name": "tipsladderbuilder",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TIPS Ladder Rebalancing Engine & Web Interface",
+  "main": "rebalance.js",
+  "scripts": {
+    "test": "node --test tests/engine.test.js",
+    "test:watch": "node --test --watch tests/engine.test.js"
+  },
+  "keywords": [
+    "TIPS",
+    "Bond",
+    "Ladder",
+    "Fixed-Income",
+    "Financial",
+    "Rebalancing"
+  ],
+  "author": "",
+  "license": "ISC"
+}
