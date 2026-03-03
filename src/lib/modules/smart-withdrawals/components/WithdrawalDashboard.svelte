@@ -19,7 +19,7 @@
 <div class="space-y-3">
 	<div class="flex justify-between items-end">
 		<div>
-			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Monthly Spending</div>
+			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Est. Monthly Spending</div>
 			<div class="text-2xl font-serif font-bold text-green-600">{formatCurrency((result?.totalSpending || 0) / 12)}</div>
 		</div>
 		<div class="text-right">

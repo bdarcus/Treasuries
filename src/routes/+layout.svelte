@@ -62,8 +62,7 @@
 					</div>
 				</div>
 				<div class="flex items-center space-x-4">
-					<a href="/design" class="text-sm text-slate-500 hover:text-slate-700">Design</a>
-					<a href="/track" class="text-sm text-slate-500 hover:text-slate-700">Track</a>
+					<div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Modular Platform</div>
 				</div>
 			</div>
 		</div>

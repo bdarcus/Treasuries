@@ -86,25 +86,25 @@
 
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 		<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Monthly Safe Spend</div>
+			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Est. Monthly Safe Spend</div>
 			<div class="text-3xl font-serif font-bold text-slate-900">{formatCurrency((result?.totalSpending || 0) / 12)}</div>
 			<p class="text-[10px] text-slate-400 mt-1 italic">Total combined real income.</p>
 		</div>
 		
 		<div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
-			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Monthly Safe Assets</div>
+			<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Est. Monthly Safe Assets</div>
 			<div class="text-xl font-bold text-slate-700">{formatCurrency((result?.safeAssets || 0) / 12)}</div>
 			<p class="text-[10px] text-slate-400 mt-1 italic">Guaranteed TIPS floor.</p>
 		</div>
 
 		<div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 shadow-sm">
-			<div class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Monthly Passive</div>
+			<div class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Est. Monthly Passive</div>
 			<div class="text-xl font-bold text-emerald-700">{formatCurrency((result?.passiveIncome || 0) / 12)}</div>
 			<p class="text-[10px] text-emerald-500 mt-1 italic">Portfolio yield/dividends.</p>
 		</div>
 
 		<div class="bg-blue-50 p-6 rounded-2xl border border-blue-100 shadow-sm">
-			<div class="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Monthly Sales</div>
+			<div class="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Est. Monthly Sales</div>
 			<div class="text-xl font-bold text-blue-700">{formatCurrency((result?.portfolioSales || 0) / 12)}</div>
 			<p class="text-[10px] text-blue-500 mt-1 italic">Required principal liquidation.</p>
 		</div>
