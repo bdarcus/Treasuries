@@ -10,6 +10,7 @@ export interface MarketAssumptions {
 export interface PortfolioState {
 	balance: number;
 	equityAllocation: number; // 0.0 to 1.0
+	expectedPortfolioYield: number; // Passive income rate (dividends + interest)
 	bequestTarget: number;    // Future value at end of horizon
 	marketAssumptions: MarketAssumptions;
 	retirementYear: number;
@@ -19,6 +20,7 @@ export interface PortfolioState {
 const DEFAULT_STATE: PortfolioState = {
 	balance: 1000000,
 	equityAllocation: 0.6,
+	expectedPortfolioYield: 0.02, // 2% default yield
 	bequestTarget: 0,
 	marketAssumptions: {
 		equityReturn: 0.058,

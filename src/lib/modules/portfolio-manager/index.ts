@@ -27,6 +27,7 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 			totalBalance: $state.balance,
 			equityAllocation: $state.equityAllocation,
 			expectedRealReturn: $realReturn,
+			expectedPortfolioYield: $state.expectedPortfolioYield,
 			bequestTarget: $state.bequestTarget
 		}))
 	},
@@ -40,8 +41,18 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 			const horizonYear = horizon.horizonYear;
 			const yearsRemaining = horizonYear - new Date().getFullYear();
 			
+			const totalAmortizedIncome = calculateConstantAmortization(state.balance, realRate, Math.max(1, yearsRemaining), state.bequestTarget);
+			
+			// Breakdown of the amortized income
+			// Passive income is simply Balance * Yield
+			const passiveIncome = state.balance * state.expectedPortfolioYield;
+			// Sales is the remainder
+			const portfolioSales = Math.max(0, totalAmortizedIncome - passiveIncome);
+
 			return {
-				amortizationIncome: calculateConstantAmortization(state.balance, realRate, Math.max(1, yearsRemaining), state.bequestTarget),
+				amortizationIncome: totalAmortizedIncome,
+				passiveIncome,
+				portfolioSales,
 				expectedRealReturn: realRate,
 				horizonYear
 			};

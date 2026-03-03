@@ -42,20 +42,22 @@ export const SmartWithdrawalModule: FinancialModule<any, any, any> = {
 			const portfolioModule = registry.getModule('portfolio-manager');
 
 			const tipsData = tipsModule ? get(tipsModule.store.publicData) : { realIncomeFloor: 0 };
-			const portfolioData = portfolioModule ? get(portfolioModule.store.publicData) : { totalBalance: 0, expectedRealReturn: 0.02 };
+			
+			// We call the portfolio engine's calculate to get the breakdown
+			const portfolioCalc = portfolioModule ? portfolioModule.engine.calculate({}) : { amortizationIncome: 0, passiveIncome: 0, portfolioSales: 0 };
 
-			// Dynamic Spending Formula
-			const floor = tipsData.realIncomeFloor || 0;
-			const upside = calculateConstantAmortization(
-				portfolioData.totalBalance || 0,
-				portfolioData.expectedRealReturn || 0.02,
-				yearsRemaining
-			);
+			// Dynamic Spending Breakdown
+			const safeAssets = tipsData.realIncomeFloor || 0;
+			const passiveIncome = portfolioCalc.passiveIncome || 0;
+			const portfolioSales = portfolioCalc.portfolioSales || 0;
+			
+			const totalSpending = safeAssets + passiveIncome + portfolioSales;
 
 			return {
-				totalSpending: floor + upside,
-				floor,
-				upside,
+				totalSpending,
+				safeAssets,
+				passiveIncome,
+				portfolioSales,
 				yearsRemaining,
 				targetProb: horizon.targetProb,
 				horizonYear: horizon.horizonYear

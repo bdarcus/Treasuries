@@ -38,6 +38,11 @@
 		portfolioStore.update(s => ({ ...s, bequestTarget: val }));
 	}
 
+	function updateYield(e: Event) {
+		const val = parseFloat((e.target as HTMLInputElement).value) / 100;
+		portfolioStore.update(s => ({ ...s, expectedPortfolioYield: val }));
+	}
+
 	function updateRetirement(e: Event) {
 		const val = parseInt((e.target as HTMLInputElement).value);
 		portfolioStore.update(s => ({ ...s, retirementYear: val }));
@@ -71,6 +76,16 @@
 					<span class="font-mono font-bold text-blue-600 w-12 text-right">{Math.round(state.equityAllocation * 100)}%</span>
 				</div>
 				<p class="text-[10px] text-slate-400 mt-1 italic">Allocation serves as your primary risk proxy.</p>
+			</div>
+
+			<div class="space-y-2">
+				<label for="yield" class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Expected Portfolio Yield (%)</label>
+				<div class="flex items-center space-x-4">
+					<input type="range" id="yield" min="0" max="10" step="0.1" value={state.expectedPortfolioYield * 100} oninput={updateYield}
+						class="flex-1 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
+					<span class="font-mono font-bold text-emerald-600 w-12 text-right">{(state.expectedPortfolioYield * 100).toFixed(1)}%</span>
+				</div>
+				<p class="text-[10px] text-slate-400 mt-1 italic">Dividends and interest (passive income portion).</p>
 			</div>
 
 			<div class="space-y-2">
