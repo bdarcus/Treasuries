@@ -3,11 +3,23 @@
 	import { goto } from '$app/navigation';
 	import { formatCurrency } from '$lib/shared/financial';
 	
+	import { exportAllData, importAllData } from '$lib/shared/persistence';
+	
 	const modules = registry.getAllModules();
 
 	function manageModule(id: string) {
 		registry.setActive(id);
 		goto('/design');
+	}
+
+	async function handleImport(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const file = target.files?.[0];
+		if (!file) return;
+		const text = await file.text();
+		if (importAllData(text)) {
+			window.location.reload(); // Refresh to hydrate all views
+		}
 	}
 
 	// Aggregate data for the unified summary
@@ -53,6 +65,19 @@
 				<div class="pt-4 flex flex-wrap gap-4">
 					<button onclick={() => manageModule('smart-withdrawals')} class="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg">Adjust Plan</button>
 					<button onclick={() => manageModule('tips-ladder')} class="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors">Refine Ladder</button>
+				</div>
+
+				<div class="pt-6 border-t border-slate-100 flex items-center space-x-6">
+					<button onclick={exportAllData} class="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600 transition-colors">
+						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+						Save All Data (.json)
+					</button>
+					
+					<label class="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors cursor-pointer">
+						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+						Load Configuration
+						<input type="file" accept=".json" onchange={handleImport} class="hidden" />
+					</label>
 				</div>
 			</div>
 
