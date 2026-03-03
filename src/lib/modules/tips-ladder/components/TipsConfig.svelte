@@ -5,6 +5,7 @@
 	import { fetchMarketData, getRefCpi, type MarketData } from '../engine/market-data';
 	import { ladderStore } from '../store/ladder';
 	import { exportToCsv } from '../engine/export';
+	import { goto } from '$app/navigation';
 
 	let marketData = $state<MarketData | null>(null);
 	let startYear = $state(new Date().getFullYear());
@@ -22,6 +23,19 @@
 	let error = $state<string | null>(null);
 
 	onMount(async () => {
+		ladderStore.load();
+		const saved = $ladderStore;
+		
+		if (saved.target) {
+			startYear = saved.target.startYear;
+			endYear = saved.target.endYear;
+			income = saved.target.income;
+		}
+		
+		if (saved.lastResults) {
+			results = saved.lastResults;
+		}
+
 		try {
 			marketData = await fetchMarketData();
 			customSettlementDate = toDateStr(marketData.settlementDate);
@@ -243,7 +257,7 @@
 									target: { startYear, endYear, income },
 									lastResults: results
 								});
-								window.location.href = '/track';
+								goto('/track');
 							}}
 							class="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-500 uppercase tracking-widest transition-colors shadow-sm"
 						>
