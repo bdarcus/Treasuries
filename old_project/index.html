@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TIPS Ladder Architect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Plus+Jakarta+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --primary: #10b981; --border: #e2e8f0; --error: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Plus Jakarta Sans", sans-serif; margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+  h1, h2, h3 { font-family: "Fraunces", serif; margin: 0; }
+  
+  .view { display: none; }
+  .view.active { display: block; animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .landing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 48px; }
+  .path-card {
+    background: white; border: 2px solid transparent; border-radius: 24px; padding: 48px 32px; cursor: pointer;
+    transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+  }
+  .path-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+  .path-card h2 { font-size: 28px; margin: 16px 0; }
+  
+  .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 40px; margin-top: 32px; align-items: start; }
+  .sidebar { background: white; border: 1px solid var(--border); border-radius: 20px; padding: 32px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); position: sticky; top: 24px; }
+  .field { margin-bottom: 24px; }
+  .field label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 8px; letter-spacing: 0.05em; }
+  input { width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; font-family: inherit; }
+  input:focus { outline: none; border-color: var(--primary); }
+
+  .cost-card { background: #1e293b; color: white; border-radius: 16px; padding: 32px; margin-top: 32px; text-align: center; }
+  .cost-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin-bottom: 8px; }
+  .cost-val { font-family: "Fraunces", serif; font-size: 42px; font-weight: 600; }
+
+  .action-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 24px; transition: all 0.2s; }
+  .action-btn:hover { background: #059669; transform: translateY(-1px); }
+
+  .results-list { background: white; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+  .results-item { display: grid; grid-template-columns: 100px 1fr 150px; padding: 24px; border-bottom: 1px solid var(--border); align-items: center; }
+  .purpose { font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; }
+  
+  .back-btn { background: none; border: none; color: #64748b; cursor: pointer; font-weight: 700; margin-bottom: 16px; padding: 0; font-size: 13px; }
+  .hidden { display: none !important; }
+  
+  #live-error { background: #450a0a; color: #fecdd3; padding: 12px; border-radius: 8px; font-size: 11px; margin-top: 16px; display: none; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div id="view-landing" class="view active">
+    <h1>TIPS Ladder Architect</h1>
+    <p style="font-size: 18px; color: #64748b; margin-top: 12px;">Plan your guaranteed, inflation-protected income stream.</p>
+    <div class="landing-grid">
+      <div class="path-card" onclick="openMode('new')">
+        <div style="font-size: 32px;">🌱</div>
+        <h2>Start Fresh</h2>
+        <p style="color: #64748b;">Build a new ladder from cash.</p>
+        <div style="font-weight: 800; font-size: 12px; color: var(--primary);">BUILD FROM ZERO →</div>
+      </div>
+      <div class="path-card" onclick="openMode('maintain')">
+        <div style="font-size: 32px;">📈</div>
+        <h2>Optimize</h2>
+        <p style="color: #64748b;">Rebalance your existing portfolio.</p>
+        <div style="font-weight: 800; font-size: 12px; color: var(--primary);">SYNC HOLDINGS →</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-main" class="view">
+    <button class="back-btn" onclick="showView('landing')">← Back</button>
+    <h1 id="view-title">Ladder Architect</h1>
+
+    <div class="main-grid">
+      <aside class="sidebar">
+        
+        <div id="ui-maintain" class="field">
+          <label>Existing Portfolio (CSV)</label>
+          <input type="file" id="file-input" accept=".csv">
+        </div>
+
+        <div id="ui-new" class="hidden">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+            <div class="field" style="margin-bottom:0">
+              <label>Start Year</label>
+              <input type="number" id="start-year">
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <label>End Year</label>
+              <input type="number" id="end-year">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Target Yearly Income ($)</label>
+          <input type="number" id="income-input" value="10000">
+        </div>
+
+        <div id="cost-display" class="cost-card hidden">
+          <div class="cost-label">Estimated Investment Required</div>
+          <div id="cost-val" class="cost-val">$0</div>
+          <p style="font-size: 11px; opacity: 0.6; margin-top: 12px;">Based on current Treasury rates.</p>
+          <div id="live-error"></div>
+        </div>
+
+        <button class="action-btn" id="gen-btn" onclick="generate()">Generate Ladder</button>
+      </aside>
+
+      <section>
+        <div id="results-welcome" style="padding: 80px 40px; text-align: center; background: white; border-radius: 20px; border: 1px solid var(--border);">
+          <h2 id="welcome-title">Set your goals.</h2>
+          <p style="color: #64748b; max-width: 400px; margin: 12px auto;">Adjust the parameters on the left to calculate your optimal investment plan.</p>
+        </div>
+
+        <div id="results-output" class="hidden">
+          <div class="results-list" id="shopping-list"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentMode = 'new';
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + id).classList.add('active');
+  }
+  function openMode(m) {
+    currentMode = m;
+    document.getElementById('view-title').textContent = (m === 'new' ? 'New Ladder Architect' : 'Portfolio Optimizer');
+    document.getElementById('ui-maintain').classList.toggle('hidden', m === 'new');
+    document.getElementById('ui-new').classList.toggle('hidden', m === 'maintain');
+    document.getElementById('cost-display').classList.toggle('hidden', m === 'maintain');
+    showView('main');
+    if (m === 'new' && window.updatePrice) window.updatePrice();
+  }
+</script>
+
+<script type="module">
+import { buildTipsMapFromYields, localDate, toDateStr, runRebalance } from "./rebalance-lib.js";
+
+let tipsMap, refCpiRows, settlementDate;
+
+async function boot() {
+  try {
+    const [yRes, rRes] = await Promise.all([fetch("./data/TipsYields.csv"), fetch("./data/RefCPI.csv")]);
+    const parse = (t) => {
+      const lines = t.trim().split("\n").filter(l => l.trim());
+      if (lines.length < 2) return [];
+      const h = lines[0].split(",").map(s => s.trim());
+      return lines.slice(1).map(l => {
+        const v = l.split(",").map(s => s.trim());
+        return h.reduce((o, k, i) => ({ ...o, [k]: v[i] }), {});
+      });
+    };
+    const yields = parse(await yRes.text());
+    refCpiRows = parse(await rRes.text()).map(r => ({ date: r.date, refCpi: parseFloat(r.refCpi) }));
+    settlementDate = localDate(yields[0].settlementDate);
+    tipsMap = buildTipsMapFromYields(yields.map(r => ({ ...r, coupon: parseFloat(r.coupon), baseCpi: parseFloat(r.baseCpi), price: parseFloat(r.price)||null, yield: parseFloat(r.yield)||null })));
+    
+    const y = new Date().getFullYear();
+    document.getElementById('start-year').value = y;
+    document.getElementById('end-year').value = y + 9;
+
+    ['start-year', 'end-year', 'income-input'].forEach(id => {
+      document.getElementById(id).oninput = window.updatePrice;
+    });
+    window.updatePrice();
+  } catch (e) { console.error("Boot error", e); }
+}
+
+window.updatePrice = () => {
+  if (currentMode !== 'new' || !tipsMap) return;
+  const income = parseFloat(document.getElementById('income-input').value) || 0;
+  const start = parseInt(document.getElementById('start-year').value) || 0;
+  const end = parseInt(document.getElementById('end-year').value) || 0;
+  const errorEl = document.getElementById('live-error');
+  
+  if (income > 0 && start > 0 && end >= start) {
+    const dateStr = toDateStr(settlementDate);
+    const refCPI = refCpiRows.find(r => r.date <= dateStr)?.refCpi;
+    try {
+      const res = runRebalance({ dara: income, method: "Full", holdings: [], tipsMap, refCPI, settlementDate, startYear: start, endYear: end });
+      if (res.summary.costDeltaSum === 0) throw new Error("Could not find matching bonds in market data.");
+      document.getElementById('cost-val').textContent = "$" + Math.round(Math.abs(res.summary.costDeltaSum)).toLocaleString();
+      if (errorEl) errorEl.style.display = 'none';
+    } catch (e) { 
+      console.warn("Live Estimate Error", e);
+      document.getElementById('cost-val').textContent = "---";
+      if (errorEl) {
+        errorEl.textContent = e.message;
+        errorEl.style.display = 'block';
+      }
+    }
+  }
+};
+
+window.generate = async () => {
+  try {
+    let holdings = [];
+    let startYear, endYear;
+    if (currentMode === 'new') {
+      startYear = parseInt(document.getElementById('start-year').value);
+      endYear = parseInt(document.getElementById('end-year').value);
+    } else {
+      const file = document.getElementById('file-input').files[0];
+      if (!file) return alert("Upload CSV first");
+      const text = await file.text();
+      holdings = text.trim().split("\n").slice(1).map(l => {
+        const parts = l.split(",");
+        return { cusip: parts[0].trim(), qty: parseInt(parts[1]) };
+      }).filter(h => h.cusip && !isNaN(h.qty));
+    }
+    const income = parseFloat(document.getElementById('income-input').value);
+    const dateStr = toDateStr(settlementDate);
+    const refCPI = refCpiRows.find(r => r.date <= dateStr)?.refCpi;
+    const res = runRebalance({ dara: income, method: currentMode==='new'?'Full':'Gap', holdings, tipsMap, refCPI, settlementDate, startYear, endYear });
+    render(res);
+  } catch (e) { alert(e.message); }
+};
+
+function render(res) {
+  document.getElementById('results-welcome').classList.add('hidden');
+  document.getElementById('results-output').classList.remove('hidden');
+  const list = document.getElementById('shopping-list');
+  list.innerHTML = "";
+  res.results.forEach(r => {
+    if (r[9] === 0 || r[9] === "") return;
+    const div = document.createElement('div');
+    div.className = 'results-item';
+    div.innerHTML = `
+      <div style="font-family: Fraunces, serif; font-size: 20px; font-weight: 700; color: #10b981;">${r[3]}</div>
+      <div>
+        <div class="purpose">INCOME FOR ${r[3]}</div>
+        <div style="font-weight:600; font-size:14px;">Buy ${Math.abs(r[9]).toLocaleString()} units of Bond ${r[0]}</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">Matures ${r[2]}</div>
+      </div>
+      <div style="text-align:right; font-weight:700; font-size:18px;">$${Math.round(Math.abs(r[11])).toLocaleString()}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
