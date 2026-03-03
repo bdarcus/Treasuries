@@ -27,6 +27,11 @@
 		portfolioStore.update(s => ({ ...s, equityAllocation: val }));
 	}
 
+	function updateBequest(e: Event) {
+		const val = parseFloat((e.target as HTMLInputElement).value) || 0;
+		portfolioStore.update(s => ({ ...s, bequestTarget: val }));
+	}
+
 	function updateRetirement(e: Event) {
 		const val = parseInt((e.target as HTMLInputElement).value);
 		portfolioStore.update(s => ({ ...s, retirementYear: val }));
@@ -60,6 +65,13 @@
 					<span class="font-mono font-bold text-blue-600 w-12 text-right">{Math.round(state.equityAllocation * 100)}%</span>
 				</div>
 				<p class="text-[10px] text-slate-400 mt-1 italic">Allocation serves as your primary risk proxy.</p>
+			</div>
+
+			<div class="space-y-2">
+				<label for="bequest" class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Bequest Target (Future $)</label>
+				<input type="number" id="bequest" value={state.bequestTarget} oninput={updateBequest} 
+					class="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500 text-sm" />
+				<p class="text-[10px] text-slate-400 mt-1 italic">Amount to leave behind at the end of the horizon.</p>
 			</div>
 
 			<div class="space-y-2">
@@ -105,9 +117,9 @@
 		<div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
 			<h3 class="font-serif text-xl font-bold mb-6">Merton Constant Amortization</h3>
 			<p class="text-slate-600 text-sm leading-relaxed mb-8">
-				In the Merton model, your portfolio is treated as a self-amortizing asset. 
-				Given your current balance of <strong>{formatCurrency(state.balance)}</strong> and a real return of <strong>{(realReturn * 100).toFixed(1)}%</strong>, 
-				this portfolio can sustainably generate a real income of:
+				In the Merton model, your portfolio is treated as a self-amortizing asset that preserves your bequest. 
+				Given your current balance of <strong>{formatCurrency(state.balance)}</strong>, a real return of <strong>{(realReturn * 100).toFixed(1)}%</strong>, 
+				and a target bequest of <strong>{formatCurrency(state.bequestTarget)}</strong>, this portfolio can sustainably generate a real income of:
 			</p>
 
 			<div class="flex items-center justify-center py-12 bg-blue-50 rounded-2xl border border-blue-100">

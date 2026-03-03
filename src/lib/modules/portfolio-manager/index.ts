@@ -26,7 +26,8 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 		publicData: derived([portfolioStore, expectedRealReturn], ([$state, $realReturn]) => ({
 			totalBalance: $state.balance,
 			equityAllocation: $state.equityAllocation,
-			expectedRealReturn: $realReturn
+			expectedRealReturn: $realReturn,
+			bequestTarget: $state.bequestTarget
 		}))
 	},
 
@@ -40,7 +41,7 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 			const yearsRemaining = horizonYear - new Date().getFullYear();
 			
 			return {
-				amortizationIncome: calculateConstantAmortization(state.balance, realRate, Math.max(1, yearsRemaining)),
+				amortizationIncome: calculateConstantAmortization(state.balance, realRate, Math.max(1, yearsRemaining), state.bequestTarget),
 				expectedRealReturn: realRate,
 				horizonYear
 			};
@@ -51,7 +52,7 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 			const horizonYear = horizon.horizonYear;
 			
 			const yearsRemaining = Math.max(1, horizonYear - new Date().getFullYear());
-			const income = calculateConstantAmortization(state.balance, realRate, yearsRemaining);
+			const income = calculateConstantAmortization(state.balance, realRate, yearsRemaining, state.bequestTarget);
 			const balances = projectPortfolio(state.balance, realRate, yearsRemaining, income);
 			
 			const startYear = new Date().getFullYear();
