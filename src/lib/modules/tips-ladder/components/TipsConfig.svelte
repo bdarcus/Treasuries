@@ -1,199 +1,225 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { runRebalance } from '../engine/rebalance-engine';
-	import { toDateStr, localDate } from '../../../shared/date';
-	import { fetchMarketData, getRefCpi, type MarketData } from '../engine/market-data';
-	import { ladderStore, type BondLadder } from '../store/ladder';
-	import { exportToCsv } from '../engine/export';
-	import { goto } from '$app/navigation';
+import { onMount } from "svelte";
+import { runRebalance } from "../engine/rebalance-engine";
+import { toDateStr, localDate } from "../../../shared/date";
+import {
+	fetchMarketData,
+	getRefCpi,
+	type MarketData,
+} from "../engine/market-data";
+import { ladderStore, type BondLadder } from "../store/ladder";
+import { exportToCsv } from "../engine/export";
+import { goto } from "$app/navigation";
 
-	let marketData = $state<MarketData | null>(null);
-	let error = $state<string | null>(null);
+let marketData = $state<MarketData | null>(null);
+let error = $state<string | null>(null);
 
-	// Multi-ladder UI state
-	let activeLadderId = $state<string | null>(null);
-	let isAddingNew = $state(false);
+// Multi-ladder UI state
+let activeLadderId = $state<string | null>(null);
+let isAddingNew = $state(false);
 
-	// Current Editing Form
-	let currentName = $state('');
-	let currentType = $state<'tips-manual' | 'simple-income'>('tips-manual');
-	let currentTaxStatus = $state<'taxable' | 'tax-free' | 'deferred'>('taxable');
-	let startYear = $state(new Date().getFullYear());
-	let endYear = $state(new Date().getFullYear() + 9);
-	let income = $state(10000);
+// Current Editing Form
+let currentName = $state("");
+let currentType = $state<"tips-manual" | "simple-income">("tips-manual");
+let currentTaxStatus = $state<"taxable" | "tax-free" | "deferred">("taxable");
+let startYear = $state(new Date().getFullYear());
+let endYear = $state(new Date().getFullYear() + 9);
+let income = $state(10000);
 
-	// Advanced Settings (for TIPS generator)
-	let strategy = $state<'Default' | 'Cheapest'>('Default');
-	let excludeCusipsStr = $state('');
-	let customSettlementDate = $state('');
-	let marginalTaxRate = $state(0);
+// Advanced Settings (for TIPS generator)
+let strategy = $state<"Default" | "Cheapest">("Default");
+let excludeCusipsStr = $state("");
+let customSettlementDate = $state("");
+let marginalTaxRate = $state(0);
 
-	let results = $state<any>(null);
-	let liveEstimate = $state<number | null>(null);
+let results = $state<any>(null);
+let liveEstimate = $state<number | null>(null);
 
-	onMount(async () => {
-		ladderStore.load();
-		// Auto-select first ladder if none selected
-		if ($ladderStore.ladders.length > 0 && !activeLadderId && !isAddingNew) {
-			editLadder($ladderStore.ladders[0]);
+onMount(async () => {
+	ladderStore.load();
+	// Auto-select first ladder if none selected
+	if ($ladderStore.ladders.length > 0 && !activeLadderId && !isAddingNew) {
+		editLadder($ladderStore.ladders[0]);
+	}
+
+	try {
+		marketData = await fetchMarketData();
+		if (marketData) {
+			customSettlementDate = toDateStr(marketData.settlementDate);
 		}
+	} catch (e) {
+		error = "Failed to load market data.";
+	}
+});
 
-		try {
-			marketData = await fetchMarketData();
-			if (marketData) {
-				customSettlementDate = toDateStr(marketData.settlementDate);
-			}
-		} catch (e) {
-			error = "Failed to load market data.";
-		}
-	});
+// Handle external store changes (like after migration)
+$effect(() => {
+	if ($ladderStore.ladders.length > 0 && !activeLadderId && !isAddingNew) {
+		editLadder($ladderStore.ladders[0]);
+	}
+});
 
-	// Handle external store changes (like after migration)
-	$effect(() => {
-		if ($ladderStore.ladders.length > 0 && !activeLadderId && !isAddingNew) {
-			editLadder($ladderStore.ladders[0]);
-		}
-	});
+function resetForm() {
+	currentName = "";
+	currentType = "tips-manual";
+	currentTaxStatus = "taxable";
+	startYear = new Date().getFullYear();
+	endYear = new Date().getFullYear() + 9;
+	income = 10000;
+	results = null;
+	liveEstimate = null;
+}
 
-	function resetForm() {
-		currentName = '';
-		currentType = 'tips-manual';
-		currentTaxStatus = 'taxable';
-		startYear = new Date().getFullYear();
-		endYear = new Date().getFullYear() + 9;
-		income = 10000;
-		results = null;
+function startAdding() {
+	resetForm();
+	isAddingNew = true;
+	activeLadderId = null;
+}
+
+function editLadder(ladder: BondLadder) {
+	isAddingNew = false;
+	activeLadderId = ladder.id;
+	currentName = ladder.name;
+	currentType = ladder.type;
+	currentTaxStatus = ladder.taxStatus || "taxable";
+	startYear = ladder.startYear;
+	endYear = ladder.endYear;
+	income = ladder.annualIncome;
+	results = null;
+}
+
+function getSettlementDate() {
+	return customSettlementDate
+		? localDate(customSettlementDate)
+		: marketData!.settlementDate;
+}
+
+function getExcludeCusips() {
+	return excludeCusipsStr
+		.split(",")
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
+function updateEstimate() {
+	if (
+		currentType !== "tips-manual" ||
+		!marketData ||
+		income <= 0 ||
+		startYear <= 0 ||
+		endYear < startYear
+	) {
+		liveEstimate = null;
+		return;
+	}
+	try {
+		const sDate = getSettlementDate();
+		const dateStr = toDateStr(sDate);
+		const refCPI = getRefCpi(marketData.refCpiRows, dateStr);
+		const res = runRebalance({
+			dara: income,
+			method: "Full",
+			holdings: [],
+			tipsMap: marketData.tipsMap,
+			refCPI: refCPI,
+			settlementDate: sDate,
+			startYear,
+			endYear,
+			excludeCusips: getExcludeCusips(),
+			strategy,
+			marginalTaxRate: marginalTaxRate / 100,
+		});
+		liveEstimate = Math.abs(res.summary.costDeltaSum);
+	} catch (e) {
 		liveEstimate = null;
 	}
+}
 
-	function startAdding() {
-		resetForm();
-		isAddingNew = true;
-		activeLadderId = null;
+function saveSimple() {
+	const ladderData = {
+		name: currentName || "New Income Stream",
+		type: "simple-income" as const,
+		taxStatus: currentTaxStatus,
+		startYear,
+		endYear,
+		annualIncome: income,
+	};
+
+	if (activeLadderId) {
+		ladderStore.updateLadder(activeLadderId, ladderData);
+	} else {
+		ladderStore.addLadder(ladderData);
 	}
 
-	function editLadder(ladder: BondLadder) {
-		isAddingNew = false;
-		activeLadderId = ladder.id;
-		currentName = ladder.name;
-		currentType = ladder.type;
-		currentTaxStatus = ladder.taxStatus || 'taxable';
-		startYear = ladder.startYear;
-		endYear = ladder.endYear;
-		income = ladder.annualIncome;
-		results = null;
-	}
+	ladderStore.save($ladderStore);
+	isAddingNew = false;
+}
 
-	function getSettlementDate() {
-		return customSettlementDate ? localDate(customSettlementDate) : marketData!.settlementDate;
-	}
-
-	function getExcludeCusips() {
-		return excludeCusipsStr.split(',').map(s => s.trim()).filter(Boolean);
-	}
-
-	function updateEstimate() {
-		if (currentType !== 'tips-manual' || !marketData || income <= 0 || startYear <= 0 || endYear < startYear) {
-			liveEstimate = null;
-			return;
-		}
-		try {
-			const sDate = getSettlementDate();
-			const dateStr = toDateStr(sDate);
-			const refCPI = getRefCpi(marketData.refCpiRows, dateStr);
-			const res = runRebalance({
-				dara: income,
-				method: 'Full',
-				holdings: [],
-				tipsMap: marketData.tipsMap,
-				refCPI: refCPI,
-				settlementDate: sDate,
-				startYear,
-				endYear,
-				excludeCusips: getExcludeCusips(),
-				strategy,
-				marginalTaxRate: marginalTaxRate / 100
-			});
-			liveEstimate = Math.abs(res.summary.costDeltaSum);
-		} catch (e) {
-			liveEstimate = null;
-		}
-	}
-
-	function saveSimple() {
-		const ladderData = {
-			name: currentName || 'New Income Stream',
-			type: 'simple-income' as const,
-			taxStatus: currentTaxStatus,
+function generateTips() {
+	if (!marketData) return;
+	try {
+		error = null;
+		const sDate = getSettlementDate();
+		const dateStr = toDateStr(sDate);
+		const refCPI = getRefCpi(marketData.refCpiRows, dateStr);
+		results = runRebalance({
+			dara: income,
+			method: "Full",
+			holdings: [],
+			tipsMap: marketData.tipsMap,
+			refCPI: refCPI,
+			settlementDate: sDate,
 			startYear,
 			endYear,
-			annualIncome: income
-		};
+			excludeCusips: getExcludeCusips(),
+			strategy,
+			marginalTaxRate: marginalTaxRate / 100,
+		});
+	} catch (e: any) {
+		error = e.message;
+	}
+}
 
-		if (activeLadderId) {
-			ladderStore.updateLadder(activeLadderId, ladderData);
-		} else {
-			ladderStore.addLadder(ladderData);
-		}
-		
-		ladderStore.save($ladderStore);
-		isAddingNew = false;
+function commitTips() {
+	if (!results) return;
+
+	const ladderData = {
+		name: currentName || "TIPS Ladder",
+		type: "tips-manual" as const,
+		taxStatus: currentTaxStatus,
+		holdings: results.results
+			.map((r: any) => ({ cusip: r[0], qty: r[8] }))
+			.filter((h: any) => h.qty > 0),
+		startYear,
+		endYear,
+		annualIncome: income,
+	};
+
+	if (activeLadderId) {
+		ladderStore.updateLadder(activeLadderId, ladderData);
+	} else {
+		ladderStore.addLadder(ladderData);
 	}
 
-	function generateTips() {
-		if (!marketData) return;
-		try {
-			error = null;
-			const sDate = getSettlementDate();
-			const dateStr = toDateStr(sDate);
-			const refCPI = getRefCpi(marketData.refCpiRows, dateStr);
-			results = runRebalance({
-				dara: income,
-				method: 'Full',
-				holdings: [],
-				tipsMap: marketData.tipsMap,
-				refCPI: refCPI,
-				settlementDate: sDate,
-				startYear,
-				endYear,
-				excludeCusips: getExcludeCusips(),
-				strategy,
-				marginalTaxRate: marginalTaxRate / 100
-			});
-		} catch (e: any) {
-			error = e.message;
-		}
+	ladderStore.save($ladderStore);
+	isAddingNew = false;
+	goto("/track");
+}
+
+$effect(() => {
+	if (
+		currentType === "tips-manual" &&
+		(startYear ||
+			endYear ||
+			income ||
+			strategy ||
+			excludeCusipsStr ||
+			customSettlementDate ||
+			marginalTaxRate !== undefined)
+	) {
+		updateEstimate();
 	}
-
-	function commitTips() {
-		if (!results) return;
-		
-		const ladderData = {
-			name: currentName || 'TIPS Ladder',
-			type: 'tips-manual' as const,
-			taxStatus: currentTaxStatus,
-			holdings: results.results.map((r: any) => ({ cusip: r[0], qty: r[8] })).filter((h: any) => h.qty > 0),
-			startYear,
-			endYear,
-			annualIncome: income
-		};
-
-		if (activeLadderId) {
-			ladderStore.updateLadder(activeLadderId, ladderData);
-		} else {
-			ladderStore.addLadder(ladderData);
-		}
-		
-		ladderStore.save($ladderStore);
-		isAddingNew = false;
-		goto('/track');
-	}
-
-	$effect(() => {
-		if (currentType === 'tips-manual' && (startYear || endYear || income || strategy || excludeCusipsStr || customSettlementDate || marginalTaxRate !== undefined)) {
-			updateEstimate();
-		}
-	});
+});
 </script>
 
 <div class="space-y-8">

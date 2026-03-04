@@ -1,34 +1,46 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { ladderStore } from '../store/ladder';
-	import { formatCurrency } from '../../../shared/financial';
+import { onMount } from "svelte";
+import { ladderStore } from "../store/ladder";
+import { formatCurrency } from "../../../shared/financial";
 
-	let state = $derived($ladderStore);
-	let totalIncome = $derived(state.ladders.reduce((sum, l) => sum + l.annualIncome, 0));
-	
-	let minYear = $derived(state.ladders.length ? Math.min(...state.ladders.map(l => l.startYear)) : new Date().getFullYear());
-	let maxYear = $derived(state.ladders.length ? Math.max(...state.ladders.map(l => l.endYear)) : minYear + 30);
-	
-	let years = $derived.by(() => {
-		const result = [];
-		for (let y = minYear; y <= maxYear; y++) {
-			const incomeForYear = state.ladders
-				.filter(l => y >= l.startYear && y <= l.endYear)
-				.reduce((sum, l) => sum + l.annualIncome, 0);
-			
-			result.push({
-				year: y,
-				income: incomeForYear
-			});
-		}
-		return result;
-	});
+let state = $derived($ladderStore);
+let totalIncome = $derived(
+	state.ladders.reduce((sum, l) => sum + l.annualIncome, 0),
+);
 
-	let maxAnnualIncome = $derived(years.length ? Math.max(...years.map(y => y.income)) : 0);
+let minYear = $derived(
+	state.ladders.length
+		? Math.min(...state.ladders.map((l) => l.startYear))
+		: new Date().getFullYear(),
+);
+let maxYear = $derived(
+	state.ladders.length
+		? Math.max(...state.ladders.map((l) => l.endYear))
+		: minYear + 30,
+);
 
-	onMount(() => {
-		ladderStore.load();
-	});
+let years = $derived.by(() => {
+	const result = [];
+	for (let y = minYear; y <= maxYear; y++) {
+		const incomeForYear = state.ladders
+			.filter((l) => y >= l.startYear && y <= l.endYear)
+			.reduce((sum, l) => sum + l.annualIncome, 0);
+
+		result.push({
+			year: y,
+			income: incomeForYear,
+		});
+	}
+	return result;
+});
+
+let maxAnnualIncome = $derived(
+	years.length ? Math.max(...years.map((y) => y.income)) : 0,
+);
+
+onMount(() => {
+	ladderStore.load();
+});
 </script>
 
 {#if state.ladders.length === 0}

@@ -1,4 +1,4 @@
-import { localDate } from './date';
+import { localDate } from "./date";
 
 export const TIPS_PAR_VALUE = 1000;
 
@@ -7,7 +7,12 @@ export const TIPS_PAR_VALUE = 1000;
  * Uses the Newton-Raphson method to solve the Present Value equation.
  * @reference Matches Excel YIELD(...,2,1) logic for semi-annual bonds.
  */
-export function yieldFromPrice(cleanPrice: number, coupon: number, settleDateStr: string, maturityStr: string): number | null {
+export function yieldFromPrice(
+	cleanPrice: number,
+	coupon: number,
+	settleDateStr: string,
+	maturityStr: string,
+): number | null {
 	if (!cleanPrice || cleanPrice <= 0) return null;
 	const settle = localDate(settleDateStr);
 	const mature = localDate(maturityStr);
@@ -30,7 +35,11 @@ export function yieldFromPrice(cleanPrice: number, coupon: number, settleDateStr
 
 	const nextCoupon = nextCouponOnOrAfter(settle);
 	if (!nextCoupon) return null;
-	const lastCoupon = new Date(nextCoupon.getFullYear(), nextCoupon.getMonth() - 6, 15);
+	const lastCoupon = new Date(
+		nextCoupon.getFullYear(),
+		nextCoupon.getMonth() - 6,
+		15,
+	);
 
 	const days = (a: Date, b: Date) => (b.getTime() - a.getTime()) / 86400000;
 	const E = days(lastCoupon, nextCoupon);
@@ -83,13 +92,22 @@ export function yieldFromPrice(cleanPrice: number, coupon: number, settleDateStr
 /**
  * Calculates Modified Duration for a TIPS bond.
  */
-export function calculateMDuration(settlement: Date, maturity: Date, coupon: number, yld: number): number {
-	const months = (maturity.getFullYear() - settlement.getFullYear()) * 12 + (maturity.getMonth() - settlement.getMonth());
+export function calculateMDuration(
+	settlement: Date,
+	maturity: Date,
+	coupon: number,
+	yld: number,
+): number {
+	const months =
+		(maturity.getFullYear() - settlement.getFullYear()) * 12 +
+		(maturity.getMonth() - settlement.getMonth());
 	const periods = Math.ceil(months / 6);
-	
-	let weightedSum = 0, pvSum = 0;
+
+	let weightedSum = 0,
+		pvSum = 0;
 	for (let i = 1; i <= periods; i++) {
-		const cashflow = i === periods ? 1000 + (coupon * 1000) / 2 : (coupon * 1000) / 2;
+		const cashflow =
+			i === periods ? 1000 + (coupon * 1000) / 2 : (coupon * 1000) / 2;
 		const pv = cashflow / Math.pow(1 + yld / 2, i);
 		weightedSum += i * pv;
 		pvSum += pv;
@@ -102,10 +120,10 @@ export function calculateMDuration(settlement: Date, maturity: Date, coupon: num
  * Formats a number as USD currency.
  */
 export function formatCurrency(value: number): string {
-	return new Intl.NumberFormat('en-US', {
-		style: 'currency',
-		currency: 'USD',
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: "USD",
 		minimumFractionDigits: 0,
-		maximumFractionDigits: 0
+		maximumFractionDigits: 0,
 	}).format(value);
 }

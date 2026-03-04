@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { ladderStore } from '../store/ladder';
-	import { formatCurrency } from '../../../shared/financial';
+import { ladderStore } from "../store/ladder";
+import { formatCurrency } from "../../../shared/financial";
 
-	let state = $derived($ladderStore);
-	let totalIncome = $derived(state.ladders.reduce((sum, l) => sum + l.annualIncome, 0));
-	let ladderCount = $derived(state.ladders.length);
+let state = $derived($ladderStore);
+let totalIncome = $derived(
+	state.ladders.reduce((sum, l) => sum + l.annualIncome, 0),
+);
+let ladderCount = $derived(state.ladders.length);
 </script>
 
 {#if ladderCount === 0}

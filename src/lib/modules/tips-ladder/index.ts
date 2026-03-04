@@ -1,19 +1,20 @@
-import { derived, get } from 'svelte/store';
-import { ladderStore } from './store/ladder';
-import type { FinancialModule, IncomeStream } from '../../core/types';
+import { derived, get } from "svelte/store";
+import { ladderStore } from "./store/ladder";
+import type { FinancialModule, IncomeStream } from "../../core/types";
 
 // Components
-import TipsIcon from './components/TipsIcon.svelte';
-import TipsConfig from './components/TipsConfig.svelte';
-import TipsDashboard from './components/TipsDashboard.svelte';
-import TipsAnalysis from './components/TipsAnalysis.svelte';
-import TipsImport from './components/TipsImport.svelte';
+import TipsIcon from "./components/TipsIcon.svelte";
+import TipsConfig from "./components/TipsConfig.svelte";
+import TipsDashboard from "./components/TipsDashboard.svelte";
+import TipsAnalysis from "./components/TipsAnalysis.svelte";
+import TipsImport from "./components/TipsImport.svelte";
 
 export const TipsLadderModule: FinancialModule = {
-	id: 'tips-ladder',
-	name: 'Bond Ladders',
-	description: 'Managed portfolios of individual bonds providing stable, predictable income.',
-	category: 'income',
+	id: "tips-ladder",
+	name: "Bond Ladders",
+	description:
+		"Managed portfolios of individual bonds providing stable, predictable income.",
+	category: "income",
 
 	store: {
 		subscribe: ladderStore.subscribe,
@@ -21,18 +22,25 @@ export const TipsLadderModule: FinancialModule = {
 		load: ladderStore.load,
 		reset: ladderStore.reset,
 		publicData: derived(ladderStore, ($state) => {
-			const totalIncome = $state.ladders.reduce((sum, l) => sum + l.annualIncome, 0);
-			const minYear = $state.ladders.length ? Math.min(...$state.ladders.map(l => l.startYear)) : new Date().getFullYear();
-			const maxYear = $state.ladders.length ? Math.max(...$state.ladders.map(l => l.endYear)) : minYear + 30;
-			
+			const totalIncome = $state.ladders.reduce(
+				(sum, l) => sum + l.annualIncome,
+				0,
+			);
+			const minYear = $state.ladders.length
+				? Math.min(...$state.ladders.map((l) => l.startYear))
+				: new Date().getFullYear();
+			const maxYear = $state.ladders.length
+				? Math.max(...$state.ladders.map((l) => l.endYear))
+				: minYear + 30;
+
 			return {
 				hasLadders: $state.ladders.length > 0,
 				totalIncome,
 				startYear: minYear,
 				endYear: maxYear,
-				ladders: $state.ladders
+				ladders: $state.ladders,
 			};
-		})
+		}),
 	},
 
 	engine: {
@@ -53,16 +61,16 @@ export const TipsLadderModule: FinancialModule = {
 					annualAmounts,
 					isGuaranteed: true,
 					hasCOLA: true,
-					taxStatus: ladder.taxStatus
+					taxStatus: ladder.taxStatus,
 				};
 			});
-		}
 		},
+	},
 	ui: {
 		Icon: TipsIcon,
 		Config: TipsConfig,
 		Dashboard: TipsDashboard,
 		Analysis: TipsAnalysis,
-		Import: TipsImport
-	}
+		Import: TipsImport,
+	},
 };

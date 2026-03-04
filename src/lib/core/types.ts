@@ -1,5 +1,5 @@
-import type { SvelteComponent } from 'svelte';
-import type { Readable } from 'svelte/store';
+import type { SvelteComponent } from "svelte";
+import type { Readable } from "svelte/store";
 
 /**
  * Standard data structure for a year-by-year financial projection.
@@ -19,7 +19,7 @@ export interface IncomeStream {
 	annualAmounts: Record<number, number>; // Year -> Real Amount
 	isGuaranteed: boolean;
 	hasCOLA: boolean;
-	taxStatus: 'taxable' | 'tax-free' | 'deferred';
+	taxStatus: "taxable" | "tax-free" | "deferred";
 }
 /**
  * The core interface for a pluggable financial feature.
@@ -28,8 +28,8 @@ export interface FinancialModule<TState = any, TCalc = any, TPublic = any> {
 	id: string;
 	name: string;
 	description: string;
-	category: 'income' | 'portfolio' | 'liability';
-	
+	category: "income" | "portfolio" | "liability";
+
 	// State & Persistence
 	store: {
 		subscribe: (run: (value: TState) => void) => () => void;

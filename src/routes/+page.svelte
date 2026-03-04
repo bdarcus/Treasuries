@@ -1,51 +1,51 @@
 <script lang="ts">
-	import { registry } from '$lib';
-	import { goto } from '$app/navigation';
-	import { formatCurrency } from '$lib/shared/financial';
-	import { exportAllData, importAllData } from '$lib/shared/persistence';
-	
-	function manageModule(id: string) {
-		registry.setActive(id);
-		goto('/design');
+import { registry } from "$lib";
+import { goto } from "$app/navigation";
+import { formatCurrency } from "$lib/shared/financial";
+import { exportAllData, importAllData } from "$lib/shared/persistence";
+
+function manageModule(id: string) {
+	registry.setActive(id);
+	goto("/design");
+}
+
+async function handleImport(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const file = target.files?.[0];
+	if (!file) return;
+	const text = await file.text();
+	if (importAllData(text)) {
+		window.location.reload();
 	}
+}
 
-	async function handleImport(e: Event) {
-		const target = e.target as HTMLInputElement;
-		const file = target.files?.[0];
-		if (!file) return;
-		const text = await file.text();
-		if (importAllData(text)) {
-			window.location.reload();
-		}
-	}
+function toggleModule(id: string) {
+	registry.toggleModule(id);
+}
 
-	function toggleModule(id: string) {
-		registry.toggleModule(id);
-	}
+// Aggregate data for the unified summary
+let summary = $derived.by(() => {
+	const smartMod = registry.getModule("smart-withdrawals");
+	if (!smartMod) return null;
 
-	// Aggregate data for the unified summary
-	let summary = $derived.by(() => {
-		const smartMod = registry.getModule('smart-withdrawals');
-		if (!smartMod) return null;
-		
-		const calc = smartMod.engine.calculate({});
-		return {
-			monthlyTotal: calc.totalSpending / 12,
-			safeAssets: calc.safeAssets / 12,
-			passive: calc.passiveIncome / 12,
-			sales: calc.portfolioSales / 12,
-			horizon: calc.yearsRemaining
-		};
-	});
+	const calc = smartMod.engine.calculate({});
+	return {
+		monthlyTotal: calc.totalSpending / 12,
+		safeAssets: calc.safeAssets / 12,
+		passive: calc.passiveIncome / 12,
+		sales: calc.portfolioSales / 12,
+		horizon: calc.yearsRemaining,
+	};
+});
 
-	let chartData = $derived.by(() => {
-		if (!summary) return [];
-		return [
-			{ label: 'Safe Assets', val: summary.safeAssets, color: 'bg-indigo-600' },
-			{ label: 'Passive Income', val: summary.passive, color: 'bg-emerald-500' },
-			{ label: 'Portfolio Sales', val: summary.sales, color: 'bg-blue-500' }
-		].filter(d => d.val > 0.01); // Filter out tiny/zero values
-	});
+let chartData = $derived.by(() => {
+	if (!summary) return [];
+	return [
+		{ label: "Safe Assets", val: summary.safeAssets, color: "bg-indigo-600" },
+		{ label: "Passive Income", val: summary.passive, color: "bg-emerald-500" },
+		{ label: "Portfolio Sales", val: summary.sales, color: "bg-blue-500" },
+	].filter((d) => d.val > 0.01); // Filter out tiny/zero values
+});
 </script>
 
 <div class="space-y-12">

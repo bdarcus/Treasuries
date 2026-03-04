@@ -1,19 +1,19 @@
 {
-  "updatedAt": "2026-03-01",
-  "assumptions": {
-    "globalEquities": {
-      "realReturn": 0.037,
-      "dividendYield": 0.021,
-      "volatility": 0.16
-    },
-    "tips": {
-      "realReturn": 0.019,
-      "realYield": 0.019
-    },
-    "inflation": 0.021,
-    "cash": {
-      "realReturn": 0.005,
-      "nominalYield": 0.045
-    }
-  }
+	"updatedAt": "2026-03-01",
+	"assumptions": {
+		"globalEquities": {
+			"realReturn": 0.037,
+			"dividendYield": 0.021,
+			"volatility": 0.16
+		},
+		"tips": {
+			"realReturn": 0.019,
+			"realYield": 0.019
+		},
+		"inflation": 0.021,
+		"cash": {
+			"realReturn": 0.005,
+			"nominalYield": 0.045
+		}
+	}
 }

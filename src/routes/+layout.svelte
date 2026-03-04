@@ -1,37 +1,37 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { registry } from '$lib';
-	import { planningStore } from '$lib/shared/planning';
-	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import './layout.css';
+import { onMount } from "svelte";
+import { registry } from "$lib";
+import { planningStore } from "$lib/shared/planning";
+import { page } from "$app/state";
+import { goto } from "$app/navigation";
+import "./layout.css";
 
-	let { children } = $props();
+let { children } = $props();
 
-	onMount(() => {
-		// Load registry state (enabled/disabled)
-		registry.loadRegistry();
+onMount(() => {
+	// Load registry state (enabled/disabled)
+	registry.loadRegistry();
 
-		// Load planning state first
-		planningStore.load();
+	// Load planning state first
+	planningStore.load();
 
-		// Load all module states
-		registry.allModulesList.forEach(m => m.store.load());
-		
-		// Specifically for Portfolio module, fetch external assumptions
-		const portfolioModule = registry.getModule('portfolio-manager');
-		if (portfolioModule && 'fetchAssumptions' in portfolioModule.store) {
-			(portfolioModule.store as any).fetchAssumptions();
-		}
-	});
+	// Load all module states
+	registry.allModulesList.forEach((m) => m.store.load());
 
-	function setActive(id: string) {
-		registry.setActive(id);
-		// If we are on the home page, navigate to design view when selecting a module
-		if (page.url.pathname === '/') {
-			goto('/design');
-		}
+	// Specifically for Portfolio module, fetch external assumptions
+	const portfolioModule = registry.getModule("portfolio-manager");
+	if (portfolioModule && "fetchAssumptions" in portfolioModule.store) {
+		(portfolioModule.store as any).fetchAssumptions();
 	}
+});
+
+function setActive(id: string) {
+	registry.setActive(id);
+	// If we are on the home page, navigate to design view when selecting a module
+	if (page.url.pathname === "/") {
+		goto("/design");
+	}
+}
 </script>
 
 <svelte:head>

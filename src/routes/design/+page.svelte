@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { registry } from '$lib';
-	import { goto } from '$app/navigation';
+import { registry } from "$lib";
+import { goto } from "$app/navigation";
 </script>
 
 {#if registry.activeId}

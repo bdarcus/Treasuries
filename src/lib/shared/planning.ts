@@ -1,9 +1,12 @@
-import { writable, derived } from 'svelte/store';
-import { calculateTargetHorizon, getTargetProbFromMargin } from '../modules/smart-withdrawals/engine/life-expectancy';
+import { writable, derived } from "svelte/store";
+import {
+	calculateTargetHorizon,
+	getTargetProbFromMargin,
+} from "../modules/smart-withdrawals/engine/life-expectancy";
 
 export interface PersonInfo {
 	age: number;
-	gender: 'male' | 'female';
+	gender: "male" | "female";
 }
 
 export interface PlanningState {
@@ -13,10 +16,10 @@ export interface PlanningState {
 
 const DEFAULT_STATE: PlanningState = {
 	people: [
-		{ age: 65, gender: 'male' },
-		{ age: 65, gender: 'female' }
+		{ age: 65, gender: "male" },
+		{ age: 65, gender: "female" },
 	],
-	conservatismMargin: 0.5
+	conservatismMargin: 0.5,
 };
 
 function createPlanningStore() {
@@ -27,14 +30,14 @@ function createPlanningStore() {
 		set,
 		update,
 		save: (state: PlanningState) => {
-			if (typeof localStorage !== 'undefined') {
-				localStorage.setItem('planning_state', JSON.stringify(state));
+			if (typeof localStorage !== "undefined") {
+				localStorage.setItem("planning_state", JSON.stringify(state));
 			}
 			set(state);
 		},
 		load: () => {
-			if (typeof localStorage !== 'undefined') {
-				const saved = localStorage.getItem('planning_state');
+			if (typeof localStorage !== "undefined") {
+				const saved = localStorage.getItem("planning_state");
 				if (saved) {
 					// Merge with DEFAULT_STATE to handle newly added fields
 					set({ ...DEFAULT_STATE, ...JSON.parse(saved) });
@@ -42,7 +45,7 @@ function createPlanningStore() {
 				}
 			}
 			set(DEFAULT_STATE);
-		}
+		},
 	};
 }
 
@@ -57,6 +60,6 @@ export const planningHorizon = derived(planningStore, ($state) => {
 	return {
 		yearsRemaining: years,
 		horizonYear: new Date().getFullYear() + Math.round(years),
-		targetProb
+		targetProb,
 	};
 });
