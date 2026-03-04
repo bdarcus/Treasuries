@@ -39,7 +39,7 @@ export const SmartWithdrawalModule: FinancialModule<any, any, any> = {
 			const yearsRemaining = horizon.yearsRemaining;
 
 			// Pull data from other enabled modules via the registry
-			const enabledModules = get(registry.getEnabledModules());
+			const enabledModules = registry.enabledModulesList;
 			const incomeStreams = enabledModules
 				.filter(m => m.category === 'income')
 				.map(m => m.engine.getIncomeStream?.(get(m.store as any)));
@@ -73,7 +73,6 @@ export const SmartWithdrawalModule: FinancialModule<any, any, any> = {
 			};
 		},
 		getIncomeStream: (state): any => {
-			// This is a master aggregator, it doesn't provide its own stream
 			return null;
 		},
 		project: (state): ProjectionData => {

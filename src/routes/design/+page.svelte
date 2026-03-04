@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { registry } from '$lib';
+	import { goto } from '$app/navigation';
 </script>
 
 {#if registry.activeId}
@@ -16,9 +17,12 @@
 			You haven't selected a module to configure yet. Head back to the dashboard to select a financial strategy to design.
 		</p>
 		<div class="pt-4">
-			<a href="/" class="inline-block px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg">
+			<button 
+				onclick={() => goto('/')} 
+				class="inline-block px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg"
+			>
 				Go to Dashboard
-			</a>
+			</button>
 		</div>
 	</div>
 {/if}
