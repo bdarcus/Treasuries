@@ -1,13 +1,13 @@
-import { derived, get, writable } from 'svelte/store';
+import { SvelteMap } from 'svelte/reactivity';
 import type { FinancialModule } from './types';
 
 /**
  * Singleton Registry that manages all pluggable financial modules.
- * Refactored to Svelte 5 reactive patterns.
+ * Uses Svelte 5 SvelteMap for deep reactivity.
  */
 class ModuleRegistry {
-	// Map of ID -> Module
-	modules = $state(new Map<string, FinancialModule>());
+	// Reactive Map of ID -> Module
+	modules = new SvelteMap<string, FinancialModule>();
 	
 	// Active module ID for UI routing
 	activeId = $state<string | null>(null);
@@ -30,7 +30,7 @@ class ModuleRegistry {
 			if (saved) {
 				try {
 					const parsed = JSON.parse(saved);
-					// Merge with current to ensure new modules are visible even if old state exists
+					// Merge with current to ensure new modules are visible
 					this.enabledMap = { ...this.enabledMap, ...parsed };
 				} catch (e) {
 					console.error('Failed to parse registry state', e);
