@@ -53,13 +53,13 @@
 					<div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Person {i + 1}</div>
 					<div class="grid grid-cols-2 gap-4">
 						<div class="space-y-1">
-							<label class="block text-[10px] font-bold text-slate-500 uppercase">Age</label>
-							<input type="number" value={person.age} oninput={(e) => updateAge(i, parseInt((e.target as HTMLInputElement).value))}
+							<label for="age-{i}" class="block text-[10px] font-bold text-slate-500 uppercase">Age</label>
+							<input type="number" id="age-{i}" value={person.age} oninput={(e) => updateAge(i, parseInt((e.target as HTMLInputElement).value))}
 								class="w-full rounded-lg border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 font-bold" />
 						</div>
 						<div class="space-y-1">
-							<label class="block text-[10px] font-bold text-slate-500 uppercase">Gender</label>
-							<select value={person.gender} onchange={(e) => updateGender(i, (e.target as HTMLSelectElement).value as any)}
+							<label for="gender-{i}" class="block text-[10px] font-bold text-slate-500 uppercase">Gender</label>
+							<select id="gender-{i}" value={person.gender} onchange={(e) => updateGender(i, (e.target as HTMLSelectElement).value as any)}
 								class="w-full rounded-lg border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 text-sm">
 								<option value="male">Male</option>
 								<option value="female">Female</option>
@@ -71,10 +71,10 @@
 
 			<div class="space-y-3 pt-2">
 				<div class="flex justify-between items-center">
-					<label class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Conservatism Margin</label>
+					<label for="margin" class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Conservatism Margin</label>
 					<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">PROB: {Math.round(horizon.targetProb * 100)}%</span>
 				</div>
-				<input type="range" min="0" max="1" step="0.05" value={state.conservatismMargin} oninput={(e) => updateMargin(parseFloat((e.target as HTMLInputElement).value))}
+				<input type="range" id="margin" min="0" max="1" step="0.05" value={state.conservatismMargin} oninput={(e) => updateMargin(parseFloat((e.target as HTMLInputElement).value))}
 					class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
 				<div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
 					<span>Median LE</span>
