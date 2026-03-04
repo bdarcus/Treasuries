@@ -14,18 +14,14 @@
 	let error = $state<string | null>(null);
 	let fileName = $state("");
 
+	// Target for rebalance
+	let targetLadderId = $state<string | null>(null);
+	let newLadderName = $state("Imported Portfolio");
+
 	onMount(async () => {
 		ladderStore.load();
 		try {
 			marketData = await fetchMarketData();
-			
-			// Hydrate from store if data exists
-			const saved = $ladderStore;
-			if (saved.holdings.length > 0) {
-				holdings = saved.holdings;
-				if (saved.target) income = saved.target.income;
-				if (saved.lastResults) results = saved.lastResults;
-			}
 		} catch (e) {
 			error = "Failed to load market data.";
 		}
@@ -52,27 +48,34 @@
 			const dateStr = toDateStr(marketData.settlementDate);
 			const refCPI = getRefCpi(marketData.refCpiRows, dateStr);
 			results = runRebalance({
-				dara: income,
-				method: 'Gap', // Use the core maintenance innovation
+				dara: income || 0,
+				method: 'Gap', 
 				holdings,
 				tipsMap: marketData.tipsMap,
 				refCPI: refCPI,
 				settlementDate: marketData.settlementDate
 			});
 
-			// Save to store
-			ladderStore.save({
+			// Update or Create ladder in store
+			const ladderData = {
+				name: targetLadderId ? ($ladderStore.ladders.find(l => l.id === targetLadderId)?.name || newLadderName) : newLadderName,
+				type: 'tips-manual' as const,
 				holdings: results.results.map((r: any) => ({ 
 					cusip: r[0], 
-					qty: typeof r[8] === 'number' ? r[8] : r[1] // Use target qty if set, else current
-				})),
-				target: { 
-					startYear: results.summary.firstYear, 
-					endYear: results.summary.lastYear, 
-					income: results.summary.DARA 
-				},
-				lastResults: results
-			});
+					qty: typeof r[8] === 'number' ? r[8] : r[1]
+				})).filter((h: any) => h.qty > 0),
+				startYear: results.summary.firstYear, 
+				endYear: results.summary.lastYear, 
+				annualIncome: results.summary.DARA 
+			};
+
+			if (targetLadderId) {
+				ladderStore.updateLadder(targetLadderId, ladderData);
+			} else {
+				ladderStore.addLadder(ladderData);
+			}
+			
+			ladderStore.save($ladderStore);
 		} catch (e: any) {
 			error = e.message;
 		}
@@ -82,9 +85,9 @@
 <div class="space-y-8">
 	{#if holdings.length === 0}
 		<div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm text-center max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-			<h2 class="font-serif text-3xl font-bold mb-4">Portfolio Rebalancer</h2>
-			<p class="text-slate-500 mb-8">Upload your current TIPS holdings to identify gaps and optimize your income stream using duration-matched rebalancing.</p>
-			
+			<h2 class="font-serif text-3xl font-bold mb-4">Portfolio Maintenance</h2>
+			<p class="text-slate-500 mb-8">Upload current holdings to sync a ladder's tracking or create a new one from an existing portfolio.</p>
+
 			<div class="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 inline-block text-left mx-auto">
 				<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 text-center">Required CSV Format</div>
 				<code class="text-xs font-mono text-slate-600 block bg-white p-3 rounded-lg border border-slate-200">
@@ -92,7 +95,6 @@
 					91282CDX6,15000<br/>
 					91282CGK1,10000
 				</code>
-				<p class="text-[10px] text-slate-400 mt-2 text-center">Supports headers like 'CUSIP', 'Qty', 'Quantity', or 'Face Value'.</p>
 			</div>
 
 			<label class="block">
@@ -104,25 +106,15 @@
 	{:else}
 		<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
 			<div class="flex items-center">
-				<div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-2xl mr-4">
-					{fileName ? '📄' : '📁'}
-				</div>
+				<div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-2xl mr-4">📄</div>
 				<div>
-					<h2 class="font-serif text-xl font-bold text-slate-900">
-						{fileName ? fileName : 'Stored Portfolio'}
-					</h2>
-					<p class="text-xs font-bold text-emerald-600 uppercase tracking-widest">
-						{holdings.length} Securities Identified
-					</p>
+					<h2 class="font-serif text-xl font-bold text-slate-900">{fileName}</h2>
+					<p class="text-xs font-bold text-emerald-600 uppercase tracking-widest">{holdings.length} Securities Identified</p>
 				</div>
 			</div>
 			<button 
-				onclick={() => {
-					holdings = [];
-					results = null;
-					fileName = "";
-				}}
-				class="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-red-600 transition-colors"
+				onclick={() => { holdings = []; results = null; fileName = ""; }}
+				class="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-600 transition-colors"
 			>
 				Change Portfolio
 			</button>
@@ -131,41 +123,47 @@
 
 	{#if holdings.length > 0}
 		<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-			<!-- Rebalance Sidebar -->
-			<aside class="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6 sticky top-24">
-				<h3 class="font-serif text-2xl font-bold text-slate-900 border-b border-slate-100 pb-4">Rebalance Goals</h3>
-				
-				<div class="space-y-2">
-					<label for="income" class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Target Annual Income ($)</label>
-					<input type="number" id="income" bind:value={income} placeholder="Leave blank to infer from holdings"
-						class="w-full rounded-lg border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
-					<p class="text-[10px] text-slate-400 mt-2 leading-relaxed italic">
-						Inferred DARA will calculate the sustainable income from your current holdings.
-					</p>
+			<aside class="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+				<h3 class="font-serif text-2xl font-bold text-slate-900 border-b border-slate-100 pb-4">Import Settings</h3>
+
+				<div class="space-y-4">
+					<div class="space-y-2">
+						<label class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Destination</label>
+						<select bind:value={targetLadderId} class="w-full rounded-lg border-slate-200 text-sm">
+							<option value={null}>Create New Ladder</option>
+							{#each $ladderStore.ladders.filter(l => l.type === 'tips-manual') as l}
+								<option value={l.id}>Update {l.name}</option>
+							{/each}
+						</select>
+					</div>
+
+					{#if !targetLadderId}
+						<div class="space-y-2">
+							<label class="block text-[10px] font-black uppercase tracking-wider text-slate-500">New Ladder Name</label>
+							<input type="text" bind:value={newLadderName} class="w-full rounded-lg border-slate-200 text-sm" />
+						</div>
+					{/if}
+
+					<div class="space-y-2">
+						<label class="block text-[10px] font-black uppercase tracking-wider text-slate-500">Target Annual Income ($)</label>
+						<input type="number" bind:value={income} placeholder="Infer from holdings" class="w-full rounded-lg border-slate-200 text-sm" />
+					</div>
 				</div>
 
 				<button onclick={rebalance}
-					class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md transition-all hover:-translate-y-0.5">
-					Run Maintenance Rebalance
+					class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md transition-all">
+					Sync & Rebalance
 				</button>
-
-				{#if error}
-					<div class="p-4 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-100">
-						⚠️ {error}
-					</div>
-				{/if}
 			</aside>
 
-			<!-- Results Section -->
 			<section class="lg:col-span-8 space-y-8">
 				{#if !results}
 					<div class="bg-white rounded-3xl border border-slate-200 p-12 text-center">
 						<div class="text-4xl mb-4">⚖️</div>
-						<h3 class="font-serif text-xl font-bold">Ready to Optimize</h3>
-						<p class="text-slate-500 text-sm max-w-xs mx-auto mt-2">Adjust your target income on the left to see the required trades to cover any gaps.</p>
+						<h3 class="font-serif text-xl font-bold">Ready to Sync</h3>
+						<p class="text-slate-500 text-sm max-w-xs mx-auto mt-2">Run rebalance to see how your CSV matches your income goals.</p>
 					</div>
 				{:else}
-					<!-- Rebalance Stats -->
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
 							<div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Inferred DARA</div>
@@ -183,45 +181,9 @@
 						</div>
 					</div>
 
-					<!-- Innovation Callout -->
-					{#if results.summary.gapYears.length > 0}
-						<div class="bg-white border-l-4 border-emerald-500 rounded-2xl p-6 shadow-sm">
-							<div class="flex items-start">
-								<div class="text-2xl mr-4">🔄</div>
-								<div>
-									<h4 class="font-bold text-slate-900 mb-1">Gap Maintenance Strategy</h4>
-									<p class="text-sm text-slate-600 leading-relaxed mb-4">
-										The engine identified gaps in <strong>{results.summary.gapYears.join(', ')}</strong>. 
-										It proposes selling excess holdings in the <strong>{results.summary.brackets.lowerYear}</strong> and <strong>{results.summary.brackets.upperYear}</strong> brackets to mathematically cover the income requirements for those gap years.
-									</p>
-									<div class="grid grid-cols-2 gap-4">
-										<div class="p-4 bg-slate-50 rounded-xl">
-											<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sell Excess {results.summary.brackets.lowerYear}</div>
-											<div class="text-lg font-bold text-emerald-600">{Math.round(results.summary.lowerWeight * 100)}% Coverage Weight</div>
-										</div>
-										<div class="p-4 bg-slate-50 rounded-xl">
-											<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sell Excess {results.summary.brackets.upperYear}</div>
-											<div class="text-lg font-bold text-emerald-600">{Math.round(results.summary.upperWeight * 100)}% Coverage Weight</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					<!-- Trade List -->
 					<div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-						<div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+						<div class="p-6 border-b border-slate-100 bg-slate-50">
 							<h3 class="font-serif text-xl font-bold">Maintenance Trades</h3>
-							<div class="flex items-center gap-4">
-								<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Method: Gap Rebalance</div>
-								<button 
-									onclick={() => exportToCsv('tips-rebalance-plan.csv', results.HDR, results.results)}
-									class="px-3 py-1 bg-white border border-slate-200 text-emerald-600 text-[10px] font-black rounded hover:bg-slate-50 uppercase tracking-widest transition-colors shadow-sm"
-								>
-									Export CSV
-								</button>
-							</div>
 						</div>
 						<div class="overflow-x-auto">
 							<table class="w-full text-left">
@@ -252,12 +214,6 @@
 										{/if}
 									{/each}
 								</tbody>
-								<tfoot class="bg-slate-900 text-white font-bold">
-									<tr>
-										<td colspan="2" class="px-6 py-6 text-right uppercase tracking-widest text-xs opacity-60">Net Rebalance Cost</td>
-										<td class="px-6 py-6 text-right font-serif text-2xl text-emerald-400">${Math.round(Math.abs(results.summary.costDeltaSum)).toLocaleString()}</td>
-									</tr>
-								</tfoot>
 							</table>
 						</div>
 					</div>

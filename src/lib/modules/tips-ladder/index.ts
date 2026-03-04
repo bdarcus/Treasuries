@@ -14,40 +14,47 @@ export const TipsLadderModule: FinancialModule = {
 	name: 'Bond Ladders',
 	description: 'Managed portfolios of individual bonds providing stable, predictable income.',
 	category: 'income',
+
 	store: {
 		subscribe: ladderStore.subscribe,
 		save: ladderStore.save,
 		load: ladderStore.load,
 		reset: ladderStore.reset,
-		publicData: derived(ladderStore, ($state) => ({
-			hasTarget: !!$state.target,
-			income: $state.target?.income || 0,
-			startYear: $state.target?.startYear,
-			endYear: $state.target?.endYear
-		}))
+		publicData: derived(ladderStore, ($state) => {
+			const totalIncome = $state.ladders.reduce((sum, l) => sum + l.annualIncome, 0);
+			const minYear = $state.ladders.length ? Math.min(...$state.ladders.map(l => l.startYear)) : new Date().getFullYear();
+			const maxYear = $state.ladders.length ? Math.max(...$state.ladders.map(l => l.endYear)) : minYear + 30;
+			
+			return {
+				hasLadders: $state.ladders.length > 0,
+				totalIncome,
+				startYear: minYear,
+				endYear: maxYear,
+				ladders: $state.ladders
+			};
+		})
 	},
 
 	engine: {
 		calculate: (params) => {
 			const state = get(ladderStore);
-			return state.target?.income || 0;
+			return state.ladders.reduce((sum, l) => sum + l.annualIncome, 0);
 		},
 		getIncomeStream: (state): IncomeStream => {
-			const income = state.target?.income || 0;
-			const start = state.target?.startYear || new Date().getFullYear();
-			const end = state.target?.endYear || start + 30;
-			
 			const annualAmounts: Record<number, number> = {};
-			for (let y = start; y <= end; y++) {
-				annualAmounts[y] = income;
-			}
 			
+			state.ladders.forEach(ladder => {
+				for (let y = ladder.startYear; y <= ladder.endYear; y++) {
+					annualAmounts[y] = (annualAmounts[y] || 0) + ladder.annualIncome;
+				}
+			});
+
 			return {
-				id: 'tips-ladder',
-				name: 'TIPS Ladder Floor',
+				id: 'bond-ladders',
+				name: 'Bond Ladder Income',
 				annualAmounts,
 				isGuaranteed: true,
-				hasCOLA: true
+				hasCOLA: true // Assuming inflation protection for TIPS, though 'simple' might vary
 			};
 		}
 	},
