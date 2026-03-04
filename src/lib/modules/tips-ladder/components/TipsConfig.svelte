@@ -32,11 +32,25 @@
 
 	onMount(async () => {
 		ladderStore.load();
+		// Auto-select first ladder if none selected
+		if ($ladderStore.ladders.length > 0 && !activeLadderId && !isAddingNew) {
+			editLadder($ladderStore.ladders[0]);
+		}
+
 		try {
 			marketData = await fetchMarketData();
-			customSettlementDate = toDateStr(marketData.settlementDate);
+			if (marketData) {
+				customSettlementDate = toDateStr(marketData.settlementDate);
+			}
 		} catch (e) {
 			error = "Failed to load market data.";
+		}
+	});
+
+	// Handle external store changes (like after migration)
+	$effect(() => {
+		if ($ladderStore.ladders.length > 0 && !activeLadderId && !isAddingNew) {
+			editLadder($ladderStore.ladders[0]);
 		}
 	});
 
@@ -64,7 +78,7 @@
 		startYear = ladder.startYear;
 		endYear = ladder.endYear;
 		income = ladder.annualIncome;
-		results = null; // Re-run if needed
+		results = null;
 	}
 
 	function getSettlementDate() {
@@ -120,7 +134,6 @@
 		
 		ladderStore.save($ladderStore);
 		isAddingNew = false;
-		activeLadderId = null;
 	}
 
 	function generateTips() {
@@ -168,7 +181,6 @@
 		
 		ladderStore.save($ladderStore);
 		isAddingNew = false;
-		activeLadderId = null;
 		goto('/track');
 	}
 
@@ -385,11 +397,11 @@
 			</section>
 		</div>
 	{:else}
-		<div class="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-24 text-center">
-			<div class="w-20 h-20 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center mx-auto mb-8 text-3xl">🏗️</div>
-			<h3 class="font-serif text-3xl font-bold text-slate-900 mb-4">No Active Ladders</h3>
-			<p class="text-slate-500 max-w-md mx-auto mb-10 text-lg">Build multiple bond ladders to cover different income phases or inflation-protection needs.</p>
-			<button onclick={startAdding} class="px-10 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 shadow-xl transition-all hover:-translate-y-1">Create Your First Ladder</button>
+		<div class="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-xl mx-auto shadow-sm">
+			<div class="w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl">🏗️</div>
+			<h3 class="font-serif text-2xl font-bold text-slate-900 mb-2">No Active Ladders</h3>
+			<p class="text-slate-500 mb-8 text-sm">Build multiple bond ladders to cover different income phases or inflation-protection needs.</p>
+			<button onclick={startAdding} class="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 shadow-lg transition-all">Create Your First Ladder</button>
 		</div>
 	{/if}
 </div>

@@ -59,18 +59,21 @@ function createLadderStore() {
 					const saved = localStorage.getItem('tips_ladder_state');
 					if (saved) {
 						const parsed = JSON.parse(saved);
-						// Migration for old state format
-						if (parsed.target && !parsed.ladders) {
+						// Migration for old state format (has target or holdings but no ladders array)
+						if ((parsed.target || parsed.holdings) && !parsed.ladders) {
 							const legacyLadder: BondLadder = {
 								id: 'legacy-tips',
 								name: 'Existing TIPS Ladder',
 								type: 'tips-manual',
 								holdings: parsed.holdings || [],
-								startYear: parsed.target.startYear,
-								endYear: parsed.target.endYear,
-								annualIncome: parsed.target.income
+								startYear: parsed.target?.startYear || new Date().getFullYear(),
+								endYear: parsed.target?.endYear || new Date().getFullYear() + 9,
+								annualIncome: parsed.target?.income || 0
 							};
-							set({ ladders: [legacyLadder] });
+							const newState = { ladders: [legacyLadder] };
+							set(newState);
+							// Save the migrated state immediately
+							localStorage.setItem('tips_ladder_state', JSON.stringify(newState));
 						} else {
 							set(parsed);
 						}
