@@ -2,21 +2,19 @@ import { derived, get } from 'svelte/store';
 import { portfolioStore, expectedRealReturn, expectedRealYield, type PortfolioState } from './store/portfolio';
 import { calculateConstantAmortization, projectPortfolio } from './engine/amortization';
 import { planningHorizon } from '../../shared/planning';
-import type { FinancialModule, ProjectionData } from '../../core/types';
+import type { FinancialModule, ProjectionData, IncomeStream } from '../../core/types';
 
-// Placeholder components
+// Components
 import PortfolioIcon from './components/PortfolioIcon.svelte';
 import PortfolioConfig from './components/PortfolioConfig.svelte';
 import PortfolioDashboard from './components/PortfolioDashboard.svelte';
 import PortfolioAnalysis from './components/PortfolioAnalysis.svelte';
 
-/**
- * Implementation of the Total Portfolio Module (Merton-Inspired).
- */
-export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
+export const TotalPortfolioModule: FinancialModule = {
 	id: 'portfolio-manager',
 	name: 'Total Portfolio',
 	description: 'Merton-inspired constant amortization and risk-based allocation.',
+	category: 'portfolio',
 
 	store: {
 		subscribe: portfolioStore.subscribe,
@@ -40,11 +38,9 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 			const horizon = get(planningHorizon);
 			
 			const horizonYear = horizon.horizonYear;
-			const yearsRemaining = horizonYear - new Date().getFullYear();
+			const yearsRemaining = Math.max(1, horizonYear - new Date().getFullYear());
 			
-			const totalAmortizedIncome = calculateConstantAmortization(state.balance, realRate, Math.max(1, yearsRemaining), state.bequestTarget);
-			
-			// Breakdown of the amortized income
+			const totalAmortizedIncome = calculateConstantAmortization(state.balance, realRate, yearsRemaining, state.bequestTarget);
 			const passiveIncome = state.balance * realYield;
 			const portfolioSales = Math.max(0, totalAmortizedIncome - passiveIncome);
 
@@ -55,6 +51,27 @@ export const TotalPortfolioModule: FinancialModule<PortfolioState, any, any> = {
 				expectedRealReturn: realRate,
 				expectedRealYield: realYield,
 				horizonYear
+			};
+		},
+		getIncomeStream: (state): IncomeStream => {
+			// Portfolio income is dynamic, but for the summary we show the first year's amortized safe spend
+			const realRate = get(expectedRealReturn);
+			const horizon = get(planningHorizon);
+			const yearsRemaining = Math.max(1, horizon.horizonYear - new Date().getFullYear());
+			const income = calculateConstantAmortization(state.balance, realRate, yearsRemaining, state.bequestTarget);
+
+			const annualAmounts: Record<number, number> = {};
+			const start = new Date().getFullYear();
+			for (let i = 0; i <= yearsRemaining; i++) {
+				annualAmounts[start + i] = income;
+			}
+
+			return {
+				id: 'portfolio-manager',
+				name: 'Portfolio Withdrawal',
+				annualAmounts,
+				isGuaranteed: false,
+				hasCOLA: true
 			};
 		},
 		project: (state): ProjectionData => {

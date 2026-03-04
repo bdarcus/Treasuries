@@ -2,10 +2,11 @@
 	import { registry } from '$lib';
 	import { goto } from '$app/navigation';
 	import { formatCurrency } from '$lib/shared/financial';
-	
 	import { exportAllData, importAllData } from '$lib/shared/persistence';
 	
-	const modules = registry.getAllModules();
+	const allModules = registry.getAllModules();
+	const enabledModules = registry.getEnabledModules();
+	const enabledMap = registry.getEnabledMap();
 
 	function manageModule(id: string) {
 		registry.setActive(id);
@@ -18,8 +19,12 @@
 		if (!file) return;
 		const text = await file.text();
 		if (importAllData(text)) {
-			window.location.reload(); // Refresh to hydrate all views
+			window.location.reload();
 		}
+	}
+
+	function toggleModule(id: string) {
+		registry.toggleModule(id);
 	}
 
 	// Aggregate data for the unified summary
@@ -43,7 +48,7 @@
 			{ label: 'Safe Assets', val: summary.safeAssets, color: 'bg-indigo-600' },
 			{ label: 'Passive Income', val: summary.passive, color: 'bg-emerald-500' },
 			{ label: 'Portfolio Sales', val: summary.sales, color: 'bg-blue-500' }
-		].filter(d => d.val > 0);
+		].filter(d => d.val > 0.01); // Filter out tiny/zero values
 	});
 </script>
 
@@ -115,30 +120,53 @@
 		</div>
 	</section>
 
-	<!-- Module Grid -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-		{#each modules as m}
-			<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col justify-between">
-				<div>
-					<div class="flex items-center space-x-3 mb-4">
-						<div class="p-2 bg-slate-50 text-slate-600 rounded-lg group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-							<svelte:component this={m.ui.Icon} />
+	<!-- Module Management Gallery -->
+	<section class="space-y-6">
+		<h2 class="font-serif text-2xl font-bold text-slate-900 px-2">Module Gallery</h2>
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+			{#each allModules as m}
+				{@const isEnabled = $enabledMap[m.id]}
+				<div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all flex flex-col justify-between {isEnabled ? 'ring-2 ring-emerald-500/20' : 'opacity-60 grayscale'}">
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="flex items-center space-x-3">
+								<div class="p-2 bg-slate-50 text-slate-600 rounded-lg group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+									<svelte:component this={m.ui.Icon} />
+								</div>
+								<h3 class="text-lg font-bold text-slate-900">{m.name}</h3>
+							</div>
+							
+							<button 
+								onclick={() => toggleModule(m.id)}
+								class="w-10 h-6 rounded-full transition-colors relative { isEnabled ? 'bg-emerald-500' : 'bg-slate-200' }"
+							>
+								<div class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform {isEnabled ? 'translate-x-4' : 'translate-x-0'}"></div>
+							</button>
 						</div>
-						<h2 class="text-lg font-bold text-slate-900">{m.name}</h2>
+						
+						<p class="text-xs text-slate-500 leading-relaxed mb-6 h-10 line-clamp-2">{m.description}</p>
+						
+						{#if isEnabled}
+							<div class="mb-6 py-4 border-t border-slate-50">
+								<svelte:component this={m.ui.Dashboard} />
+							</div>
+						{/if}
 					</div>
-					
-					<div class="mb-6">
-						<svelte:component this={m.ui.Dashboard} />
-					</div>
-				</div>
 
-				<button 
-					onclick={() => manageModule(m.id)}
-					class="w-full py-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors font-bold text-xs uppercase tracking-widest"
-				>
-					Manage {m.name}
-				</button>
-			</div>
-		{/each}
-	</div>
+					{#if isEnabled}
+						<button 
+							onclick={() => manageModule(m.id)}
+							class="w-full py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors font-bold text-xs uppercase tracking-widest"
+						>
+							Manage Module
+						</button>
+					{:else}
+						<div class="w-full py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 rounded-xl">
+							Module Disabled
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	</section>
 </div>

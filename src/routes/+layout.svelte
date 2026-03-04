@@ -9,14 +9,18 @@
 	let { children } = $props();
 
 	const activeModuleId = registry.getActiveId();
-	const modules = registry.getAllModules();
+	const allModules = registry.getAllModules();
+	const enabledModules = registry.getEnabledModules();
 
 	onMount(() => {
+		// Load registry state (enabled/disabled)
+		registry.loadRegistry();
+
 		// Load planning state first
 		planningStore.load();
 
 		// Load all module states
-		modules.forEach(m => m.store.load());
+		allModules.forEach(m => m.store.load());
 		
 		// Specifically for Portfolio module, fetch external assumptions
 		const portfolioModule = registry.getModule('portfolio-manager');
@@ -51,7 +55,7 @@
 						<a href="/" class="font-serif text-xl font-bold text-emerald-600">Financial Modulator</a>
 					</div>
 					<div class="hidden sm:-my-px sm:ml-8 sm:flex sm:space-x-4">
-						{#each modules as m}
+						{#each $enabledModules as m}
 							<button 
 								onclick={() => setActive(m.id)}
 								class="inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium transition-colors {m.id === $activeModuleId ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}"

@@ -1,44 +1,59 @@
-import type { ComponentType } from 'svelte';
+import type { SvelteComponent } from 'svelte';
 import type { Readable } from 'svelte/store';
 
 /**
- * Common projection data structure for consistency across modules.
+ * Standard data structure for a year-by-year financial projection.
  */
 export interface ProjectionData {
 	years: number[];
 	values: number[];
-	metadata?: Record<string, any>;
 }
 
 /**
- * Standard interface for a financial tool/plugin.
+ * Standard data structure for income streams.
+ * Allows the withdrawal engine to aggregate income from any module.
  */
-export interface FinancialModule<TState, TParams, TResult> {
+export interface IncomeStream {
+	id: string;
+	name: string;
+	annualAmounts: Record<number, number>; // Year -> Real Amount
+	isGuaranteed: boolean;
+	hasCOLA: boolean;
+}
+
+/**
+ * The core interface for a pluggable financial feature.
+ */
+export interface FinancialModule<TState = any, TCalc = any, TPublic = any> {
 	id: string;
 	name: string;
 	description: string;
-
+	category: 'income' | 'portfolio' | 'liability';
+	
 	// State & Persistence
 	store: {
 		subscribe: (run: (value: TState) => void) => () => void;
+		load: () => void;
 		save: (state: TState) => void;
-		load: () => TState;
 		reset: () => void;
-		publicData: Readable<any>;
+		// Data exposed to other modules (e.g., for the withdrawal engine)
+		publicData: Readable<TPublic>;
 	};
 
-	// Logic & Calculation
+	// Calculation Engines
 	engine: {
-		calculate: (params: TParams) => TResult;
-		project: (state: TState) => ProjectionData;
+		calculate: (params: any) => TCalc;
+		project?: (state: TState) => ProjectionData;
+		// Returns the real income stream for the planning horizon
+		getIncomeStream?: (state: TState) => IncomeStream;
 	};
 
 	// UI Components
 	ui: {
-		Icon: ComponentType;
-		Config: ComponentType;
-		Dashboard: ComponentType;
-		Analysis: ComponentType;
-		Import?: ComponentType;
+		Icon: any;
+		Config: any;
+		Dashboard: any;
+		Analysis: any;
+		Import?: any;
 	};
 }

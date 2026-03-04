@@ -1,22 +1,19 @@
-import { derived, type Readable } from 'svelte/store';
-import { ladderStore, type LadderState } from './store/ladder';
-import { runRebalance } from './engine/rebalance-engine';
-import type { FinancialModule, ProjectionData } from '../../core/types';
+import { derived, get } from 'svelte/store';
+import { ladderStore } from './store/ladder';
+import type { FinancialModule, IncomeStream } from '../../core/types';
 
-// Placeholder components - will move real components here later
+// Components
 import TipsIcon from './components/TipsIcon.svelte';
 import TipsConfig from './components/TipsConfig.svelte';
 import TipsDashboard from './components/TipsDashboard.svelte';
 import TipsAnalysis from './components/TipsAnalysis.svelte';
 import TipsImport from './components/TipsImport.svelte';
 
-/**
- * Implementation of the TIPS Ladder Module.
- */
-export const TipsLadderModule: FinancialModule<LadderState, any, any> = {
+export const TipsLadderModule: FinancialModule = {
 	id: 'tips-ladder',
 	name: 'TIPS Ladder',
-	description: 'Build and track inflation-protected income ladders.',
+	description: 'A guaranteed, inflation-protected floor of individual bonds.',
+	category: 'income',
 
 	store: {
 		subscribe: ladderStore.subscribe,
@@ -24,34 +21,35 @@ export const TipsLadderModule: FinancialModule<LadderState, any, any> = {
 		load: ladderStore.load,
 		reset: ladderStore.reset,
 		publicData: derived(ladderStore, ($state) => ({
-			// Expose relevant data for other modules (e.g., Withdrawal module)
-			realIncomeFloor: $state.target?.income || 0,
-			totalLadderValue: $state.lastResults?.summary?.totalCash || 0
+			hasTarget: !!$state.target,
+			income: $state.target?.income || 0,
+			startYear: $state.target?.startYear,
+			endYear: $state.target?.endYear
 		}))
 	},
 
 	engine: {
-		calculate: (params) => runRebalance(params),
-		project: (state): ProjectionData => {
-			// Extract projection from last results
-			if (!state.lastResults || !state.lastResults.results) {
-				return { years: [], values: [] };
+		calculate: (params) => {
+			const state = get(ladderStore);
+			return state.target?.income || 0;
+		},
+		getIncomeStream: (state): IncomeStream => {
+			const income = state.target?.income || 0;
+			const start = state.target?.startYear || new Date().getFullYear();
+			const end = state.target?.endYear || start + 30;
+			
+			const annualAmounts: Record<number, number> = {};
+			for (let y = start; y <= end; y++) {
+				annualAmounts[y] = income;
 			}
 			
-			const results = state.lastResults.results;
-			const years: number[] = [];
-			const values: number[] = [];
-
-			// Year is at index 3, ARA is at index 6 in the result row
-			results.forEach((row: any[]) => {
-				const yearStr = row[3];
-				if (yearStr && !isNaN(parseInt(yearStr))) {
-					years.push(parseInt(yearStr));
-					values.push(row[6] || 0);
-				}
-			});
-
-			return { years, values };
+			return {
+				id: 'tips-ladder',
+				name: 'TIPS Ladder Floor',
+				annualAmounts,
+				isGuaranteed: true,
+				hasCOLA: true
+			};
 		}
 	},
 

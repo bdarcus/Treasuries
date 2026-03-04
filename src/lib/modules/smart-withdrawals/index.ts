@@ -19,6 +19,7 @@ export const SmartWithdrawalModule: FinancialModule<any, any, any> = {
 	id: 'smart-withdrawals',
 	name: 'Smart Withdrawal',
 	description: 'Merton-inspired dynamic spending using joint life expectancy.',
+	category: 'portfolio',
 
 	store: {
 		subscribe: planningStore.subscribe,
@@ -37,17 +38,25 @@ export const SmartWithdrawalModule: FinancialModule<any, any, any> = {
 			const horizon = get(planningHorizon);
 			const yearsRemaining = horizon.yearsRemaining;
 
-			// Get data from other modules via the registry
-			const tipsModule = registry.getModule('tips-ladder');
-			const portfolioModule = registry.getModule('portfolio-manager');
-
-			const tipsData = tipsModule ? get(tipsModule.store.publicData) : { realIncomeFloor: 0 };
+			// Pull data from other enabled modules via the registry
+			const enabledModules = get(registry.getEnabledModules());
+			const incomeStreams = enabledModules
+				.filter(m => m.category === 'income')
+				.map(m => m.engine.getIncomeStream?.(get(m.store as any)));
 			
-			// We call the portfolio engine's calculate to get the breakdown
+			// Portfolio module is handled separately as the "upside" source
+			const portfolioModule = registry.getModule('portfolio-manager');
 			const portfolioCalc = portfolioModule ? portfolioModule.engine.calculate({}) : { amortizationIncome: 0, passiveIncome: 0, portfolioSales: 0 };
 
+			// Aggregate income from all enabled income modules
+			const totalIncomeFromModules = incomeStreams.reduce((acc, stream) => {
+				if (!stream) return acc;
+				const currentYear = new Date().getFullYear();
+				return acc + (stream.annualAmounts[currentYear] || 0);
+			}, 0);
+
 			// Dynamic Spending Breakdown
-			const safeAssets = tipsData.realIncomeFloor || 0;
+			const safeAssets = totalIncomeFromModules;
 			const passiveIncome = portfolioCalc.passiveIncome || 0;
 			const portfolioSales = portfolioCalc.portfolioSales || 0;
 			
@@ -62,6 +71,10 @@ export const SmartWithdrawalModule: FinancialModule<any, any, any> = {
 				targetProb: horizon.targetProb,
 				horizonYear: horizon.horizonYear
 			};
+		},
+		getIncomeStream: (state): any => {
+			// This is a master aggregator, it doesn't provide its own stream
+			return null;
 		},
 		project: (state): ProjectionData => {
 			// Spending projection
