@@ -124,7 +124,7 @@
 	<section class="space-y-6">
 		<h2 class="font-serif text-2xl font-bold text-slate-900 px-2">Module Gallery</h2>
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each allModules as m}
+			{#each $allModules as m}
 				{@const isEnabled = $enabledMap[m.id]}
 				{@const Icon = m.ui.Icon}
 				{@const Dashboard = m.ui.Dashboard}

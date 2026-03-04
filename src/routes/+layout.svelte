@@ -20,7 +20,7 @@
 		planningStore.load();
 
 		// Load all module states
-		allModules.forEach(m => m.store.load());
+		$allModules.forEach(m => m.store.load());
 		
 		// Specifically for Portfolio module, fetch external assumptions
 		const portfolioModule = registry.getModule('portfolio-manager');

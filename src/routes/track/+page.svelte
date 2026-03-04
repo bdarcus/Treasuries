@@ -2,11 +2,11 @@
 	import { registry } from '$lib';
 
 	const activeModuleId = registry.getActiveId();
-	const modules = registry.getAllModules();
+	const allModules = registry.getAllModules();
 </script>
 
 {#if $activeModuleId}
-	{@const activeModule = modules.find(m => m.id === $activeModuleId)}
+	{@const activeModule = $allModules.find(m => m.id === $activeModuleId)}
 	{#if activeModule}
 		{@const Analysis = activeModule.ui.Analysis}
 		<Analysis />

@@ -5,7 +5,7 @@ import type { FinancialModule } from './types';
  * Singleton Registry that manages all pluggable financial modules.
  */
 class ModuleRegistry {
-	private modules = new Map<string, FinancialModule>();
+	private modules = writable<Map<string, FinancialModule>>(new Map());
 	
 	// Reactive state for the currently active UI module
 	private activeModuleId = writable<string | null>(null);
@@ -14,7 +14,10 @@ class ModuleRegistry {
 	private enabledModules = writable<Record<string, boolean>>({});
 
 	register(module: FinancialModule) {
-		this.modules.set(module.id, module);
+		this.modules.update(m => {
+			m.set(module.id, module);
+			return new Map(m); // Trigger reactivity
+		});
 		
 		// By default, if it's the first module or was previously enabled, turn it on
 		this.enabledModules.update(prev => {
@@ -57,16 +60,16 @@ class ModuleRegistry {
 	}
 
 	getModule(id: string): FinancialModule | undefined {
-		return this.modules.get(id);
+		return get(this.modules).get(id);
 	}
 
-	getAllModules(): FinancialModule[] {
-		return Array.from(this.modules.values());
+	getAllModules() {
+		return derived(this.modules, $m => Array.from($m.values()));
 	}
 
 	getEnabledModules() {
-		return derived(this.enabledModules, $enabled => {
-			return Array.from(this.modules.values()).filter(m => !!$enabled[m.id]);
+		return derived([this.modules, this.enabledModules], ([$modules, $enabled]) => {
+			return Array.from($modules.values()).filter(m => !!$enabled[m.id]);
 		});
 	}
 
