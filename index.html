@@ -254,8 +254,8 @@ async function loadData() {
   const dataInfo = document.getElementById('data-info');
   try {
     const [yieldsRes, refCpiRes] = await Promise.all([
-      fetch('./data/TipsYields.csv'),
-      fetch('./data/RefCPI.csv'),
+      fetch('https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/TIPS/TipsYields.csv'),
+      fetch('https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/TIPS/RefCPI.csv'),
     ]);
     if (!yieldsRes.ok) throw new Error(`TipsYields.csv: HTTP ${yieldsRes.status}`);
     if (!refCpiRes.ok) throw new Error(`RefCPI.csv: HTTP ${refCpiRes.status}`);
