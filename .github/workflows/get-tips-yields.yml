@@ -1,24 +1,17 @@
 name: Get TIPS Yields
 
-# FedInvest publishes prices once daily at ~1pm ET, Mon–Fri (non-holidays).
-# Run at 1:00pm and 1:05pm ET in case of slight delay.
+# FedInvest publishes prices once daily at ~1pm ET, Mon-Fri (non-holidays).
 # ET = UTC-5 (EST) or UTC-4 (EDT); both hours covered below.
-# Note: GitHub Actions cron cannot skip holidays — runs produce no change
-#       on holidays since FedInvest returns no data; the commit step is a no-op.
 
 on:
   schedule:
     - cron: '0 17 * * 1-5'   # 1:00 PM EDT (UTC-4)
-    - cron: '5 17 * * 1-5'   # 1:05 PM EDT
     - cron: '0 18 * * 1-5'   # 1:00 PM EST (UTC-5)
-    - cron: '5 18 * * 1-5'   # 1:05 PM EST
-  workflow_dispatch:          # manual trigger
+  workflow_dispatch:
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -31,11 +24,8 @@ jobs:
       - name: Get TIPS yields
         run: node getTipsYields.js
 
-      - name: Commit data/TipsYields.csv if changed
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/TipsYields.csv
-          git diff --cached --quiet || git commit -m "chore: update TipsYields.csv [skip ci]"
-          git pull --rebase origin main
-          git push
+      - name: Upload to R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler r2 object put data/TIPS/TipsYields.csv --file data/TipsYields.csv --content-type text/csv
