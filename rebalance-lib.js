@@ -288,14 +288,14 @@ export function inferDARAFromCash({ holdings: holdingsRaw, tipsMap, refCPI, sett
     const ir = refCPI / (bond.baseCpi ?? refCPI);
     portfolioCash += h.qty * (bond.price ?? 0) / 100 * ir * 1000;
   }
-  let lo = 1000, hi = 500000, foundDARA = (lo + hi) / 2;
+  let lo = 1000, hi = 500000, foundDARA = lo;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     const { summary } = runRebalance({ dara: mid, method: 'Full', holdings: holdingsRaw, tipsMap, refCPI, settlementDate });
-    const targetCost = portfolioCash - summary.costDeltaSum;
-    if (Math.abs(targetCost - portfolioCash) < 50) { foundDARA = mid; break; }
-    if (targetCost < portfolioCash) lo = mid; else hi = mid;
-    foundDARA = mid;
+    const delta = summary.costDeltaSum;
+    if (Math.abs(delta) < 50) { foundDARA = mid; break; }
+    // Only advance foundDARA when net cash is non-negative (feasible side)
+    if (delta >= 0) { lo = mid; foundDARA = mid; } else hi = mid;
   }
   return { dara: foundDARA, portfolioCash };
 }
@@ -478,11 +478,18 @@ export function runRebalance({ dara, method, holdings: holdingsRaw, tipsMap, ref
     const isBracket = bracketYearSet.has(year);
     const isRebal   = rebalYearSet.has(year);
 
-    // Select target as latest-maturing bond in year (ensures "sell earliest first" basis)
-    let targetCUSIP = null, targetMaturity = null;
-    for (const h of yi.holdings) {
-      if (!targetMaturity || h.maturity > targetMaturity) {
-        targetMaturity = h.maturity; targetCUSIP = h.cusip;
+    // Select target CUSIP: bracket years use bracket CUSIP; non-bracket use latest maturity
+    let targetCUSIP, targetMaturity;
+    if (isBracket) {
+      targetCUSIP = year === brackets.lowerYear ? brackets.lowerCUSIP : brackets.upperCUSIP;
+      const _bh = yi.holdings.find(h => h.cusip === targetCUSIP);
+      targetMaturity = _bh ? _bh.maturity : null;
+    } else {
+      targetCUSIP = null; targetMaturity = null;
+      for (const h of yi.holdings) {
+        if (!targetMaturity || h.maturity > targetMaturity) {
+          targetMaturity = h.maturity; targetCUSIP = h.cusip;
+        }
       }
     }
 
@@ -504,36 +511,59 @@ export function runRebalance({ dara, method, holdings: holdingsRaw, tipsMap, ref
         // Issue 1: clamp — can't sell more than owned
         targetFYQty = Math.max(0, Math.round(totalPINeeded / calculatePIPerBond(targetCUSIP, targetMaturity, refCPI, tipsMap)));
       } else {
-        // Multi-bond year: sell earliest-maturing bonds first, then latest
+        // Multi-bond year
         const sortedH  = [...yi.holdings].sort((a, b) => a.maturity - b.maturity);
-        const nonLatest = sortedH.slice(0, -1); // all but the latest-maturing
+        // nonTarget: all CUSIPs except the target (bracket CUSIP or latest maturity), sorted earliest first
+        const nonTarget = sortedH.filter(h => h.cusip !== targetCUSIP);
 
-        // Pre-compute PI per bond for all holdings in this year
         const piMap = {};
         for (const h of yi.holdings)
           piMap[h.cusip] = calculatePIPerBond(h.cusip, h.maturity, refCPI, tipsMap);
 
-        let nonLatestPI = 0;
-        for (const h of nonLatest) nonLatestPI += h.qty * piMap[h.cusip];
+        if (isFullMode) {
+          // Minimum trades: no selling earlier to fund buying later.
+          // Over-funded → sell non-target from earliest, then target as last resort. No buying.
+          // Under-funded → buy target only. No selling.
+          let totalCurrentOwnPI = 0;
+          for (const h of sortedH) totalCurrentOwnPI += h.qty * piMap[h.cusip];
+          const diff = totalCurrentOwnPI - totalPINeeded;
 
-        let targetLatestQty = Math.round((totalPINeeded - nonLatestPI) / piMap[targetCUSIP]);
+          targetFYQty = currentQty; // default: no change to target
 
-        if (isFullMode && targetLatestQty < currentQty) {
-          // Full rebalance only: sell earliest maturities first to avoid selling latest
-          let reducedNonLatestPI = nonLatestPI;
-          for (const h of nonLatest) {
-            reducedNonLatestPI    -= h.qty * piMap[h.cusip];
-            postRebalQtyMap[h.cusip] = 0; // tentatively zero this bond
-            targetLatestQty = Math.round((totalPINeeded - reducedNonLatestPI) / piMap[targetCUSIP]);
-            if (targetLatestQty >= currentQty) break; // enough freed up
+          if (diff > 0) {
+            // Over-funded: sell non-target from earliest first
+            let remaining = diff;
+            for (const h of nonTarget) {
+              if (remaining <= 0) break;
+              const piThis = h.qty * piMap[h.cusip];
+              if (piThis <= remaining) {
+                postRebalQtyMap[h.cusip] = 0;
+                remaining -= piThis;
+              } else {
+                const sellQty = Math.round(remaining / piMap[h.cusip]);
+                postRebalQtyMap[h.cusip] = h.qty - sellQty;
+                remaining = 0;
+              }
+            }
+            // Sell target only if still over after all non-target sold
+            if (remaining > 0) {
+              const sellQty = Math.round(remaining / piMap[targetCUSIP]);
+              targetFYQty = Math.max(0, currentQty - sellQty);
+            }
+          } else if (diff < 0) {
+            // Under-funded: buy target only, no selling
+            const buyQty = Math.round(-diff / piMap[targetCUSIP]);
+            targetFYQty = currentQty + buyQty;
           }
-          targetLatestQty = Math.max(0, targetLatestQty);
+        } else {
+          // Gap-only: hold non-target constant, size target CUSIP for residual
+          let nonTargetPI = 0;
+          for (const h of nonTarget) nonTargetPI += h.qty * piMap[h.cusip];
+          targetFYQty = Math.round((totalPINeeded - nonTargetPI) / piMap[targetCUSIP]);
         }
 
-        targetFYQty = targetLatestQty;
-
-        // Record qty changes for non-latest bonds
-        for (const h of nonLatest) {
+        // Record qty changes for non-target bonds
+        for (const h of nonTarget) {
           const newQ = postRebalQtyMap[h.cusip];
           if (newQ !== h.qty) {
             const bond = tipsMap.get(h.cusip);
