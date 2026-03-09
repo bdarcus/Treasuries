@@ -56,7 +56,7 @@
   .net { font-weight: 700; font-size: 16px; margin: 4px 0 0; }
 
   /* ── Main table ── */
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 180px); }
   table.main { border-collapse: collapse; width: 100%; background: #fff; font-size: 12px; }
   table.main th { background: #1e293b; color: #fff; padding: 5px 8px; text-align: right; font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
   table.main th:first-child, table.main th:nth-child(3), table.main th:nth-child(4) { text-align: left; }
@@ -85,7 +85,7 @@
 
   /* ── Simple table ── */
   table.simple { border-collapse: collapse; width: auto; font-size: 13px; }
-  table.simple th { background: #1e293b; color: #fff; padding: 6px 12px; text-align: right;
+  table.simple th { background: #1e293b; color: #fff; padding: 6px 12px; text-align: right; box-shadow: 0 1px 0 #334155;
                     font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
   table.simple th:first-child, table.simple th:nth-child(2), table.simple th:nth-child(3) { text-align: left; }
   table.simple td { padding: 6px 12px; border-bottom: 1px solid #eee; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -93,6 +93,8 @@
   table.simple tr.no-change td { color: #bbb; }
   table.simple tr.bracket td { background: #f0f9ff; }
   table.simple tr:hover td { background: #fffde7; }
+  table.simple tfoot td { font-weight: 600; border-top: 2px solid #94a3b8; background: #f8fafc; padding: 6px 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
 
   #output     { display: none; }
   #bfs-output { display: none; }
@@ -472,7 +474,29 @@ function renderOutput({ results, HDR, summary, details }, portfolioCash = null) 
     }).join('');
     return '<tr class="' + (noChange ? 'no-change' : '') + '">' + cells + '</tr>';
   }).join('\n');
-  simpleEl.innerHTML = simpleHeader + '<tbody>' + simpleBody + '</tbody>';
+  // Total row: sum Qty Before, Qty After, Qty Delta, Cash Delta
+  const totals = { qtyBefore: 0, qtyAfter: 0, qtyDelta: 0, cashDelta: 0 };
+  results.forEach((r, ri) => {
+    const d = details[ri];
+    totals.qtyBefore += typeof r[1] === 'number' ? r[1] : 0;
+    const qa = r[8] === '' ? r[1] : r[8];
+    totals.qtyAfter  += typeof qa === 'number' ? qa : 0;
+    totals.qtyDelta  += typeof r[9] === 'number' ? r[9] : 0;
+    totals.cashDelta += (d && typeof d.cashDelta === 'number') ? d.cashDelta : (typeof r[11] === 'number' ? r[11] : 0);
+  });
+  const fmtSgn = v => { const r2 = Math.round(v); return (r2 > 0 ? '+' : '') + r2.toLocaleString('en-US'); };
+  const tfootCells = SCOLS.map(({ label, fmt, key }) => {
+    const align = fmt !== 'str' ? ' style=	ext-align:right' : '';
+    let s = '';
+    if (label === 'Qty Before')  s = String(Math.round(totals.qtyBefore));
+    else if (label === 'Qty After')   s = String(Math.round(totals.qtyAfter));
+    else if (label === 'Qty Δ')  s = fmtSgn(totals.qtyDelta);
+    else if (label === 'Cash Δ') s = fmtSgn(totals.cashDelta);
+    else if (label === 'CUSIP')       s = 'Total';
+    return '<td' + align + '>' + esc(s) + '</td>';
+  }).join('');
+  const simpleFoot = '<tfoot><tr>' + tfootCells + '</tr></tfoot>';
+  simpleEl.innerHTML = simpleHeader + '<tbody>' + simpleBody + '</tbody>' + simpleFoot;
 
   rebalanceRendered = true;
   document.getElementById('output').style.display = 'block';
