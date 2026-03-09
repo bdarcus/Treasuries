@@ -604,7 +604,7 @@ function renderBFSOutput({ results, HDR, summary, details }) {
 function updateStickyTop(tableId, paramsBarId) {
   const topRow    = document.getElementById('top-row');
   const paramsBar = document.getElementById(paramsBarId);
-  const top = (topRow ? topRow.offsetHeight : 0) + (paramsBar ? paramsBar.offsetHeight : 0);
+  const top = topRow ? topRow.offsetHeight : 0;
   document.querySelectorAll('#' + tableId + ' th').forEach(th => { th.style.top = top + 'px'; });
 }
 
