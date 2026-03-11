@@ -14,3 +14,4 @@ data/*
 # Wrangler local state
 .wrangler/
 tips-data-worker/.wrangler/
+!data/CusipQtyTestLumpy.csv
