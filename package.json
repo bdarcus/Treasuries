@@ -2,6 +2,10 @@
   "name": "tips-ladder-builder",
   "type": "module",
   "scripts": {
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "test:e2e": "npx playwright test"
+  },
+  "dependencies": {
+    "playright": "^0.0.22"
   }
 }
