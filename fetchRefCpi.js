@@ -48,6 +48,8 @@ async function main() {
     // Write all rows to data/RefCPI.csv
     const fs   = await import('fs');
     const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const outPath = path.join(__dirname, 'data', 'RefCPI.csv');
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     const header = 'date,refCpi';
