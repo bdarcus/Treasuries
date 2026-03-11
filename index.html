@@ -71,16 +71,19 @@
   table.simple td { padding: 6px 12px; border-bottom: 1px solid #eee; white-space: nowrap; font-variant-numeric: tabular-nums; }
   table.simple td:not(:first-child):not(:nth-child(2)):not(:nth-child(3)) { text-align: right; }
   table.simple tr.no-change td { color: #94a3b8; }
-  table.simple tr.excess-subrow td { background: #f1f5f9; color: #475569; font-size: 12px; }
-  table.simple tr.bracket td { background: #f0f9ff; }
+  table.simple tr.excess-subrow td { background: #fef9c3; color: #854d0e; font-size: 12px; }
+  table.simple tr.bracket:not(.excess-subrow) td { background: #bfdbfe; }
   table.simple tr:hover td { background: #fffde7; }
   table.simple tfoot td { font-weight: 600; border-top: 2px solid #94a3b8; background: #f8fafc; padding: 6px 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 
   /* ── Info strip ── */
-  #info-strip { font-size: 11px; color: #64748b; margin-top: 5px; line-height: 1.5; }
-  .info-link { color: #1a56db; text-decoration: none; cursor: pointer; border-bottom: 1px dotted #1a56db; font-size: 11px; }
+  #info-strip { font-size: 12px; color: #475569; margin-top: 6px; line-height: 1.7; }
+  .info-row { white-space: nowrap; }
+  .info-link { color: #1a56db; text-decoration: none; cursor: pointer; border-bottom: 1px dotted #1a56db; font-size: 12px; }
   .info-link:hover { color: #1748c0; }
+  .info-link-btn { display:inline-block; background:#1e293b; color:#fff !important; padding:1px 8px; border-radius:4px; border-bottom:none !important; font-weight:700; font-size:11px; letter-spacing:.02em; }
+  .info-link-btn:hover { background:#334155; }
   .copy-dara { cursor: pointer; border-bottom: 1px dotted #64748b; }
   .copy-dara:hover { border-bottom-color: #1e293b; }
   .copy-dara.copied { color: #16a34a; border-bottom-color: #16a34a; }
@@ -192,6 +195,13 @@
         <label>Last Year</label>
         <select id="last-year"><option value="">Select year…</option></select>
       </div>
+      <div class="field" id="field-build-maturity" style="display:none">
+        <label>Maturity pick</label>
+        <select id="build-maturity">
+          <option value="last">Last to mature</option>
+          <option value="first">First to mature</option>
+        </select>
+      </div>
       <div class="field" style="justify-content:flex-end">
         <button id="run-btn" disabled>Run Rebalance</button>
       </div>
@@ -292,7 +302,7 @@ async function loadData() {
           : '';
         _staticInfo = 'Prices as of ' + settleDateStr + ' · RefCPI ' + staticRefCPI.toFixed(5)
           + ' · ' + yieldsRows.length + ' TIPS' + _gapSuffix;
-        dataInfo.textContent = _staticInfo;
+        dataInfo.innerHTML = '<div class="info-row">' + _staticInfo + '</div>';
     document.getElementById('run-btn').disabled = false;
 
     // Pre-populate sample holdings if no file already selected
@@ -367,6 +377,7 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     document.getElementById('field-bracket-mode').style.display   = isRebalance ? '' : 'none';
     document.getElementById('field-last-year').style.display  = isRebalance ? 'none' : '';
     document.getElementById('field-first-year').style.display = isRebalance ? 'none' : '';
+    document.getElementById('field-build-maturity').style.display = isRebalance ? 'none' : '';
     if (!isRebalance) document.getElementById('dara').closest('.field').style.display = '';
     document.getElementById('run-btn').textContent = isRebalance ? 'Run Rebalance' : 'Build Ladder';
 
@@ -375,7 +386,8 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     const _nci = document.getElementById('net-cash-inline');
     _nci.style.display = (isRebalance ? rebalanceRendered : buildRendered) ? '' : 'none';
     document.getElementById('nc-label').textContent = isRebalance ? 'Net Cash' : 'Total Cost';
-    document.getElementById('info-strip').innerHTML = _staticInfo + (isRebalance ? _rebalRunInfo : _buildRunInfo);
+    const _runInfo = isRebalance ? _rebalRunInfo : _buildRunInfo;
+    document.getElementById('info-strip').innerHTML = '<div class="info-row">' + _staticInfo + '</div>' + (_runInfo ? '<div class="info-row">' + _runInfo + '</div>' : '');
 
     setStatus('');
   });
@@ -415,8 +427,8 @@ function renderOutput({ results, HDR, summary, details }, portfolioCash = null) 
       + ' · FY ' + firstYear + '–' + lastYear + ', ' + rungCount + ' rungs'
       + _bracketInfo
       + ' <a class="info-link" data-popup="range">ⓘ</a>'
-      + ' · <a class="info-link" data-popup="duration">Duration calcs</a>';
-    document.getElementById('info-strip').innerHTML = _staticInfo + _rebalRunInfo;
+      + ' · <a class="info-link info-link-btn" data-popup="duration">Duration calcs</a>';
+    document.getElementById('info-strip').innerHTML = '<div class="info-row">' + _staticInfo + '</div><div class="info-row">' + _rebalRunInfo + '</div>';
   
   rebalDetails = details;
   rebalSummary = summary;
@@ -446,8 +458,8 @@ function renderBuildOutput({ results, HDR, summary, details }) {
     _infoPopups.duration = buildDurationPopupRows(summary, 'build');
     _buildRunInfo = ' · DARA <b>' + esc(Math.round(dara).toLocaleString()) + '</b>'
       + ' · FY ' + firstYear + '–' + lastYear
-      + ' · <a class="info-link" data-popup="duration">Duration calcs</a>';
-    document.getElementById('info-strip').innerHTML = _staticInfo + _buildRunInfo;
+      + ' · <a class="info-link info-link-btn" data-popup="duration">Duration calcs</a>';
+    document.getElementById('info-strip').innerHTML = '<div class="info-row">' + _staticInfo + '</div><div class="info-row">' + _buildRunInfo + '</div>';
     buildDetails = details;
   buildSummary  = summary;
 
@@ -496,7 +508,8 @@ document.getElementById('run-btn').addEventListener('click', async () => {
       setStatus('Building ladder…');
       const firstYearVal = document.getElementById('first-year').value;
       const firstYear = firstYearVal ? parseInt(firstYearVal, 10) : undefined;
-      const result = runBuild({ dara, firstYear, lastYear, tipsMap, refCPI, settlementDate });
+      const maturityPref = document.getElementById('build-maturity').value;
+      const result = runBuild({ dara, firstYear, lastYear, tipsMap, refCPI, settlementDate, maturityPref });
       renderBuildOutput(result);
       setStatus('');
 

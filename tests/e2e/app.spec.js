@@ -100,6 +100,25 @@ test('build: selecting last year and clicking Run renders build table', async ({
   expect(await rows.count()).toBeGreaterThan(0);
 });
 
+test('build: maturity preference field visible in Build, hidden in Rebalance', async ({ page }) => {
+  await expect(page.locator('#field-build-maturity')).not.toBeVisible();
+  await page.locator('.mode-btn[data-mode="build"]').click();
+  await expect(page.locator('#field-build-maturity')).toBeVisible();
+  await page.locator('.mode-btn[data-mode="rebalance"]').click();
+  await expect(page.locator('#field-build-maturity')).not.toBeVisible();
+});
+
+test('build: first-to-mature preference runs successfully', async ({ page }) => {
+  await page.locator('.mode-btn[data-mode="build"]').click();
+  const lastYearSel = page.locator('#last-year');
+  const optionCount = await lastYearSel.locator('option').count();
+  await lastYearSel.selectOption({ index: optionCount - 1 });
+  await page.locator('#build-maturity').selectOption('first');
+  await page.locator('#run-btn').click();
+  await expect(page.locator('#build-output')).toHaveCSS('display', 'block', { timeout: 15_000 });
+  expect(await page.locator('#build-table tbody tr').count()).toBeGreaterThan(0);
+});
+
 // ── 5. Help modal ─────────────────────────────────────────────────────────────
 test('help modal: opens on ? button, closes on × button', async ({ page }) => {
   const overlay = page.locator('#help-overlay');
