@@ -259,7 +259,7 @@ export function identifyBrackets(gapYears, holdings, yearInfo) {
 // Returns: { results, HDR, summary }
 // Binary search DARA such that full rebalance target cost ≈ current portfolio cash.
 // Call this before runRebalance when method='Full' and DARA is unknown.
-export function inferDARAFromCash({ holdings: holdingsRaw, tipsMap, refCPI, settlementDate }) {
+export function inferDARAFromCash({ bracketMode = '2bracket', holdings: holdingsRaw, tipsMap, refCPI, settlementDate }) {
   let portfolioCash = 0;
   for (const h of holdingsRaw) {
     const bond = tipsMap.get(h.cusip);
@@ -270,7 +270,7 @@ export function inferDARAFromCash({ holdings: holdingsRaw, tipsMap, refCPI, sett
   let lo = 1000, hi = 500000, foundDARA = lo;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    const { summary } = runRebalance({ dara: mid, method: 'Full', holdings: holdingsRaw, tipsMap, refCPI, settlementDate });
+    const { summary } = runRebalance({ dara: mid, method: 'Full', bracketMode, holdings: holdingsRaw, tipsMap, refCPI, settlementDate });
     const delta = summary.costDeltaSum;
     if (Math.abs(delta) < 50) { foundDARA = mid; break; }
     // Only advance foundDARA when net cash is non-negative (feasible side)
@@ -420,13 +420,14 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
     ...(is3Bracket ? [[newLowerYear, newLowerCUSIP, newLowerMaturity]] : []),
   ];
   for (const [bracketYear, bracketCUSIP, bracketMaturity] of _bracketTriplets) {
+    if (!yearInfo[bracketYear]) yearInfo[bracketYear] = { firstIdx: -1, lastIdx: -1, holdings: [] };
     let laterMatIntBefore = 0;
     for (const y in araLaterMaturityInterestByYear) {
       if (parseInt(y) > bracketYear) laterMatIntBefore += araLaterMaturityInterestByYear[y];
     }
     const yh = yearInfo[bracketYear].holdings;
     let tFYQty;
-    if (yh.length === 1) {
+    if (yh.length <= 1) {
       tFYQty = Math.round((DARA - laterMatIntBefore) / calculatePIPerBond(bracketCUSIP, bracketMaturity, refCPI, tipsMap));
     } else {
       let nonPI = 0;
@@ -489,7 +490,13 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
   const yearLaterMatIntSnapshot = {};
   let costForNewRungs = 0;
 
-  for (const year of allYearsSorted) {
+  // Ensure all rebalance years exist in yearInfo so the loop doesn't skip them
+  for (const y of rebalYearSet) {
+    if (!yearInfo[y]) yearInfo[y] = { firstIdx: -1, lastIdx: -1, holdings: [] };
+  }
+  const allYearsToProcess = Object.keys(yearInfo).map(Number).sort((a, b) => b - a);
+
+  for (const year of allYearsToProcess) {
     if (gapYearSet.has(year)) continue;
 
     yearLaterMatIntSnapshot[year] = rebuildLaterMatInt;
@@ -505,7 +512,7 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
                   : year === brackets.upperYear ? brackets.upperCUSIP
                   : newLowerCUSIP;
       const _bh = yi.holdings.find(h => h.cusip === targetCUSIP);
-      targetMaturity = _bh ? _bh.maturity : null;
+      targetMaturity = _bh ? _bh.maturity : tipsMap.get(targetCUSIP)?.maturity;
     } else {
       targetCUSIP = null; targetMaturity = null;
       for (const h of yi.holdings) {
@@ -513,6 +520,26 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
           targetMaturity = h.maturity; targetCUSIP = h.cusip;
         }
       }
+      if (!targetCUSIP) {
+        for (const [cusip, bond] of tipsMap.entries()) {
+          if (bond.maturity && bond.maturity.getFullYear() === year) {
+            if (!targetMaturity || bond.maturity > targetMaturity) {
+              targetMaturity = bond.maturity; targetCUSIP = cusip;
+            }
+          }
+        }
+      }
+    }
+
+    // If target isn't in current holdings (e.g. empty gap year), inject it with qty=0
+    if (targetCUSIP && !yi.holdings.find(h => h.cusip === targetCUSIP)) {
+      yi.holdings.push({
+        cusip: targetCUSIP,
+        qty: 0,
+        maturity: targetMaturity,
+        year: year
+      });
+      yi.holdings.sort((a, b) => a.maturity - b.maturity);
     }
 
     const targetBondR  = tipsMap.get(targetCUSIP);
@@ -529,7 +556,7 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
     if (isBracket || isRebal) {
       const totalPINeeded = DARA - rebuildLaterMatInt;
 
-      if (yi.holdings.length === 1) {
+      if (yi.holdings.length <= 1) {
         // Issue 1: clamp — can't sell more than owned
         targetFYQty = Math.max(0, Math.round(totalPINeeded / calculatePIPerBond(targetCUSIP, targetMaturity, refCPI, tipsMap)));
       } else {
@@ -612,7 +639,7 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
         costDelta:         -((postRebalQty - currentQty) * costPerBond),
         costPerBond, isBracket,
         currentExcessCost: isBracket
-          ? (currentQty - bracketTargetFYQtyBefore[year]) * costPerBond
+          ? Math.max(0, currentQty - bracketTargetFYQtyBefore[year]) * costPerBond
           : undefined,
       };
       if (isRebal) costForNewRungs += -buySellTargets[year].costDelta;
@@ -630,10 +657,21 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
     }
   }
 
+  // Rebuild holdings array to include any newly injected target bonds
+  holdings.length = 0;
+  const yearsAsc = [...allYearsToProcess].sort((a, b) => a - b);
+  for (const year of yearsAsc) {
+    for (const h of yearInfo[year].holdings) holdings.push(h);
+  }
+  for (const year of allYearsToProcess) {
+    const yi = yearInfo[year];
+    yi.lastIdx = holdings.indexOf(yi.holdings[yi.holdings.length - 1]);
+  }
+
   // Before ARA
   const beforeARAByYear = {};
   const beforeARACompByYear = {};
-  for (const year of allYearsSorted) {
+  for (const year of allYearsToProcess) {
     let laterMatInt = 0;
     for (const y in araLaterMaturityInterestByYear) {
       if (parseInt(y) > year) laterMatInt += araLaterMaturityInterestByYear[y];
@@ -660,7 +698,7 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
   // After ARA
   const postARAByYear = {};
   const afterARACompByYear = {};
-  for (const year of allYearsSorted) {
+  for (const year of allYearsToProcess) {
     const laterMatInt = yearLaterMatIntSnapshot[year] ?? 0;
     let yearPrincipal = 0, yearLastYearInterest = 0;
     for (const holding of yearInfo[year].holdings) {

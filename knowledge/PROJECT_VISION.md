@@ -70,7 +70,7 @@ The following architectural improvements have been implemented to stabilize the 
 
 The `knowledge/` directory is the spec layer:
 
-- **1.0** Bond Basics → **2.0** Bond Ladders → **2.1** TIPS Basics → **3.0** TIPS Ladders / **3.1** Data Pipeline → **4.0** TIPS Ladder Rebalancing
+- **1.0** Bond Basics → **2.0** Bond Ladders → **2.1** TIPS Basics → **3.0** TIPS Ladders / **3.1** Data Pipeline → **4.0** TIPS Ladder Rebalancing / **4.1** Broker Import
 - Each file inherits from dependencies; formulas are additive up the chain
 - **4.0** is the primary reference: contains all named quantities, formulas, code variable mapping, and algorithm phases
 - When adding a new displayed value: spec it in the appropriate knowledge file first, then implement
