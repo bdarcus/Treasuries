@@ -825,6 +825,12 @@ document.getElementById('drill-overlay').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.getElementById('drill-overlay').style.display = 'none';
+  if (e.key === 'Enter') {
+    const noOverlay = ['drill-overlay','account-overlay','help-overlay']
+      .every(id => document.getElementById(id).style.display === 'none');
+    const btn = document.getElementById('run-btn');
+    if (noOverlay && !btn.disabled) btn.click();
+  }
 });
 
 // ─── File Parsing & State ─────────────────────────────────────────────────────
