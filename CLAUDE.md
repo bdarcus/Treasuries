@@ -25,14 +25,16 @@ npx serve .
 
 | Module | Role |
 |--------|------|
-| `src/bond-math.js` | Pure per-bond math: `bondCalcs()`, `calculateMDuration()`, `rungAmount()` |
-| `src/gap-math.js` | Gap/bracket math + sweep helpers: `calcGapParams()`, `bracketWeights()`, `bracketExcessQtys()`, `fyQty()`, `laterMatIntContribution()`, yield interpolation |
+| `src/bond-math.js` | Pure per-bond math |
+| `src/gap-math.js` | Gap/bracket math + sweep helpers |
 | `src/rebalance-lib.js` | Rebalance orchestrator — calls the above, no raw formulas |
 | `src/build-lib.js` | Build-from-scratch orchestrator — same constraint |
-| `src/render.js` | Table HTML from unified `COLS` schema (183L) |
-| `src/drill.js` | Popup builder: `buildDrillHTML(d, colKey, summary, mode)` |
+| `src/render.js` | Table HTML from unified `COLS` schema |
+| `src/drill.js` | Drill-down popup builder |
 | `src/data.js` | CSV fetch/parse from R2 |
 | `index.html` | Thin shell: event wiring, calls render/drill, zero business logic |
+
+See `knowledge/5.0_Computation_Modules.md` for function signatures and APIs.
 
 ### Spec-First Protocol (hard rule)
 
@@ -46,18 +48,6 @@ npx serve .
 | `knowledge/2.1_TIPS_Basics.md` | costPerBond, piPerBond, indexRatio, adjustedPrincipal |
 
 Before touching any displayed value: read the relevant knowledge doc first.
-
-### Key Algorithms
-
-**Phase 4 Ladder Rebuild** (rebalance): single longest-to-shortest sweep over ALL years including brackets. Maintains `rebuildLaterMatInt` running pool. Phase 3 only produces weights; Phase 4 does all computation.
-
-**3-Bracket Mode**: "orig lower + new lower + upper" where new lower = `anchorBefore` (latest 10y TIPS with Jan maturity at minGapYear−1). Weights: w1 fixed (orig lower never sold/bought), w2/w3 duration-matched.
-
-**Full Rebalance**: `inferDARAFromCash()` binary-searches DARA until `costDeltaSum ≈ 0`.
-
-### COLS Schema
-
-`render.js` drives table output via a single `COLS` array. Each entry defines: header label, cell value function, sub-row value, totals, drill colKey, and `rebalOnly` flag. After/Before cols in Rebalance = same math as Build cols + `rebalOnly: true`.
 
 ### Data Infrastructure
 
