@@ -3,7 +3,9 @@ name: Update Reference CPI (NSA/SA)
 on:
   workflow_dispatch: # Allows manual trigger for testing
   schedule:
-    - cron: '0 0 * * 1' # Runs every Monday at midnight UTC
+    # Runs daily at 13:35 UTC (8:35 AM ET)
+    # This covers 8:30 AM ET releases with a 5-minute buffer
+    - cron: '35 13 * * *'
 
 jobs:
   update-cpi:
@@ -22,6 +24,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Check if today is a CPI Release Day
+        # If it's manual trigger (workflow_dispatch), skip the check and run anyway
+        if: github.event_name != 'workflow_dispatch'
+        run: node TipsSA/scripts/checkReleaseDate.js
 
       - name: Run Update Script
         env:
