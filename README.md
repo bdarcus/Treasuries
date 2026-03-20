@@ -10,4 +10,4 @@ A collection of tools for TIPS (Treasury Inflation-Protected Securities).
 To run the ladder builder locally:
 1.  Ensure you are at the monorepo root.
 2.  Run `npx serve .`
-3.  Navigate to `http://localhost:3000/TipsLadderBuilder/` in your browser.
+3.  Navigate to `http://localhost:8080/TipsLadderBuilder/` in your browser.
