@@ -94,9 +94,12 @@ function yieldFromPrice(cleanPrice, coupon, settleDateStr, maturityStr) {
   return y;
 }
 
+let rawYieldsData = null;
+let rawRefCpiData = null;
+let schwabPrices = null;
+
 async function init() {
   const statusEl = document.getElementById('status');
-  const infoEl = document.getElementById('info-strip');
   
   try {
     const [yieldsRes, refCpiRes] = await Promise.all([
@@ -106,43 +109,10 @@ async function init() {
 
     if (!yieldsRes.ok || !refCpiRes.ok) throw new Error("Failed to fetch data from R2");
 
-    const yieldsData = parseCsv(await yieldsRes.text());
-    const refCpiData = parseCsv(await refCpiRes.text());
+    rawYieldsData = parseCsv(await yieldsRes.text());
+    rawRefCpiData = parseCsv(await refCpiRes.text());
 
-    const settleDateStr = yieldsData[0]?.settlementDate;
-    infoEl.textContent = `Prices as of ${settleDateStr} · Reference CPI / SA factors from R2`;
-
-    const processedBonds = yieldsData.map(bond => {
-      const coupon = parseFloat(bond.coupon);
-      const price = parseFloat(bond.price);
-      
-      const mmddSettle = bond.settlementDate.slice(5, 10);
-      const mmddMature = bond.maturity.slice(5, 10);
-
-      const saSettle = parseFloat(refCpiData.find(r => r["Ref CPI Date"].includes(`-${mmddSettle}`))?.["SA Factor"]);
-      const saMature = parseFloat(refCpiData.find(r => r["Ref CPI Date"].includes(`-${mmddMature}`))?.["SA Factor"]);
-
-      if (!saSettle || !saMature) return null;
-
-      const priceSaFactor = saSettle / saMature;
-      const saPrice = price * priceSaFactor;
-
-      const askYield = yieldFromPrice(price, coupon, bond.settlementDate, bond.maturity);
-      const saYield = yieldFromPrice(saPrice, coupon, bond.settlementDate, bond.maturity);
-
-      return {
-        ...bond,
-        coupon,
-        price,
-        askYield,
-        saYield,
-        diffBps: (saYield - askYield) * 10000
-      };
-    }).filter(b => b !== null);
-
-    renderTable(processedBonds);
-    renderChart(processedBonds);
-    statusEl.textContent = `Successfully loaded ${processedBonds.length} TIPS bonds.`;
+    processAndRender();
 
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
@@ -150,6 +120,93 @@ async function init() {
     console.error(err);
   }
 }
+
+function processAndRender() {
+  if (!rawYieldsData || !rawRefCpiData) return;
+
+  const statusEl = document.getElementById('status');
+  const infoEl = document.getElementById('info-strip');
+  const priceSourceEl = document.getElementById('priceSource');
+
+  const settleDateStr = rawYieldsData[0]?.settlementDate;
+  infoEl.textContent = `Prices as of ${settleDateStr} · Reference CPI / SA factors from R2`;
+  priceSourceEl.style.display = schwabPrices ? 'block' : 'none';
+
+  const processedBonds = rawYieldsData.map(bond => {
+    const coupon = parseFloat(bond.coupon);
+    let price = parseFloat(bond.price);
+    
+    // Override with Schwab Ask price if available
+    if (schwabPrices && schwabPrices.has(bond.cusip)) {
+      price = schwabPrices.get(bond.cusip);
+    }
+
+    const mmddSettle = bond.settlementDate.slice(5, 10);
+    const mmddMature = bond.maturity.slice(5, 10);
+
+    const saSettle = parseFloat(rawRefCpiData.find(r => r["Ref CPI Date"].includes(`-${mmddSettle}`))?.["SA Factor"]);
+    const saMature = parseFloat(rawRefCpiData.find(r => r["Ref CPI Date"].includes(`-${mmddMature}`))?.["SA Factor"]);
+
+    if (!saSettle || !saMature) return null;
+
+    const priceSaFactor = saSettle / saMature;
+    const saPrice = price * priceSaFactor;
+
+    const askYield = yieldFromPrice(price, coupon, bond.settlementDate, bond.maturity);
+    const saYield = yieldFromPrice(saPrice, coupon, bond.settlementDate, bond.maturity);
+
+    return {
+      ...bond,
+      coupon,
+      price,
+      askYield,
+      saYield,
+      diffBps: (saYield - askYield) * 10000
+    };
+  }).filter(b => b !== null);
+
+  renderTable(processedBonds);
+  renderChart(processedBonds);
+  statusEl.textContent = `Successfully loaded ${processedBonds.length} TIPS bonds.`;
+}
+
+document.getElementById('schwabFile').addEventListener('change', async (e) => {
+  if (!e.target.files.length) {
+    schwabPrices = null;
+    processAndRender();
+    return;
+  }
+
+  try {
+    const text = await e.target.files[0].text();
+    const rows = parseCsv(text);
+    const priceMap = new Map();
+
+    rows.forEach(row => {
+      // Schwab CSV: "Description" contains CUSIP, "Quote" is 'Ask', "Price" is clean price
+      if (row["Quote"] === "Ask") {
+        const desc = row["Description"] || "";
+        const cusipMatch = desc.match(/[A-Z0-9]{9}/);
+        const price = parseFloat((row["Price"] || "").replace(/,/g, ''));
+        if (cusipMatch && !isNaN(price)) {
+          priceMap.set(cusipMatch[0], price);
+        }
+      }
+    });
+
+    if (priceMap.size === 0) {
+      alert("No valid Ask prices found in the Schwab CSV. Ensure it has 'Description' (with CUSIP), 'Quote' (Ask), and 'Price' columns.");
+      e.target.value = '';
+      return;
+    }
+
+    schwabPrices = priceMap;
+    processAndRender();
+  } catch (err) {
+    alert("Error parsing Schwab CSV: " + err.message);
+    console.error(err);
+  }
+});
 
 function fmtMMM(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
