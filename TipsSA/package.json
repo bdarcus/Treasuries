@@ -1,0 +1,10 @@
+{
+  "name": "tips-sa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "dotenv": "^16.0.0"
+  }
+}
