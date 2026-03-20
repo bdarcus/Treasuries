@@ -1,0 +1,13 @@
+{
+  "name": "tips-ecosystem",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "TipsLadderBuilder",
+    "TipsSA"
+  ],
+  "scripts": {
+    "test": "npm test -w TipsLadderBuilder",
+    "test:e2e": "npm run test:e2e -w TipsLadderBuilder"
+  }
+}

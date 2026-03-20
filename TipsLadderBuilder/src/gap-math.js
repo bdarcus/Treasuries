@@ -2,7 +2,7 @@
 // Spec: knowledge/5.0_Computation_Modules.md §gap-math.js
 // Math reference: knowledge/4.0_TIPS_Ladder_Rebalancing.md Phase 2, Phase 3, Phase 4
 
-import { calculateMDuration } from './bond-math.js';
+import { calculateMDuration } from '../../shared/src/bond-math.js';
 
 // ─── Yield interpolation ──────────────────────────────────────────────────────
 // Spec: 4.0 Phase 2, 3.0 Synthetic TIPS Construction

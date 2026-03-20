@@ -4,7 +4,7 @@
 // Entry point: runBuild({ dara, lastYear, tipsMap, refCPI, settlementDate })
 
 import { fmtDate } from './rebalance-lib.js';
-import { bondCalcs, calculateMDuration, rungAmount } from './bond-math.js';
+import { bondCalcs, calculateMDuration, rungAmount } from '../../shared/src/bond-math.js';
 import { interpolateYield, syntheticCoupon as _synCoupon, bracketWeights, bracketExcessQtys, fyQty as _fyQty } from './gap-math.js';
 
 // ─── Gap parameters for build-from-scratch ─────────────────────────────────────
