@@ -16,12 +16,13 @@ on:
     - cron: '35 13 10 12 *' # Dec 10 at 8:35 AM EST
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: TipsLadderBuilder
 
     steps:
       - uses: actions/checkout@v4
@@ -30,9 +31,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Fetch reference CPI data
         env:

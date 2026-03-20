@@ -1,16 +1,17 @@
-name: Fetch TIPS Reference Data
+name: Get TIPS Yields
 
 on:
   schedule:
-    - cron: '0 14 * * 1'   # Every Monday at 14:00 UTC (10am ET)
+    - cron: '0 17 * * 1-5'   # 1:00 PM EDT (UTC-4) / 12:00 PM EST (UTC-5)
   workflow_dispatch:
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: TipsLadderBuilder
 
     steps:
       - uses: actions/checkout@v4
@@ -19,14 +20,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Fetch TIPS reference data
+      - name: Get TIPS yields
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
-        run: node scripts/fetchTipsRef.js
+        run: node scripts/getTipsYields.js
