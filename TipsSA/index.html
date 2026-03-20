@@ -45,10 +45,6 @@
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
       <h3 style="margin:0; font-size:14px; color:#1e293b;">Yield Curve</h3>
       <div style="display:flex; align-items:center; gap:12px;">
-        <div style="display:flex; align-items:center; gap:4px;" title="Stretch the curve horizontally to see more detail">
-          <label style="font-size:11px; font-weight:600; color:#64748b; white-space:nowrap;">STRETCH:</label>
-          <input type="range" id="stretchSlider" min="100" max="800" value="100" style="width:80px; cursor:pointer;">
-        </div>
         <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:11px; font-weight:600; color:#64748b;" title="Keep the short end (left side) visible when zooming">
           <input type="checkbox" id="lockLeft" style="margin:0"> LOCK LEFT
         </label>
@@ -61,7 +57,7 @@
       </div>
     </div>
     <div style="font-size:10px; color:#94a3b8; margin-top:6px;">
-      Scroll to zoom · Click-and-drag to pan · Drag selection to zoom range
+      Drag selection to zoom range (creates scrollbar) · Mouse wheel to zoom
     </div>
   </div>
 

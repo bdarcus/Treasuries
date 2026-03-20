@@ -186,6 +186,8 @@ function renderChart(bonds) {
   if (chart) chart.destroy();
 
   const lockLeftEl = document.getElementById('lockLeft');
+  const resizable = document.getElementById('chartResizable');
+  const wrapper = document.getElementById('chartWrapper');
 
   chart = new Chart(ctx, {
     type: 'line',
@@ -232,16 +234,7 @@ function renderChart(bonds) {
       plugins: {
         zoom: {
           limits: {
-            x: { min: 'original', max: 'original' }
-          },
-          pan: {
-            enabled: true,
-            mode: 'x',
-            onPan: ({chart}) => {
-              if (lockLeftEl.checked) {
-                chart.options.scales.x.min = labels[0];
-              }
-            }
+            x: { min: 'original', max: 'original', minRange: 1 }
           },
           zoom: {
             wheel: {
@@ -257,10 +250,33 @@ function renderChart(bonds) {
               enabled: true
             },
             mode: 'x',
-            onZoom: ({chart}) => {
+            onZoomComplete: ({chart}) => {
+              const scale = chart.scales.x;
+              let minIndex = Math.max(0, Math.floor(scale.min));
+              let maxIndex = Math.min(labels.length - 1, Math.ceil(scale.max));
+
               if (lockLeftEl.checked) {
-                chart.options.scales.x.min = labels[0];
+                minIndex = 0;
               }
+
+              const visibleCount = maxIndex - minIndex + 1;
+              const totalCount = labels.length;
+              
+              // Calculate stretch factor (viewport / visible_fraction)
+              const factor = totalCount / visibleCount;
+              
+              // Apply stretch to container
+              resizable.style.width = Math.max(100, factor * 100) + '%';
+              
+              // Important: reset internal zoom so chart fills the new wide canvas
+              chart.resetZoom();
+              chart.options.scales.x.min = undefined;
+              chart.options.scales.x.max = undefined;
+              chart.update('none');
+
+              // Sync scroll position
+              const scrollPercent = minIndex / totalCount;
+              wrapper.scrollLeft = scrollPercent * resizable.offsetWidth;
             }
           }
         },
@@ -275,22 +291,13 @@ function renderChart(bonds) {
     }
   });
 
-  const resizable = document.getElementById('chartResizable');
-  const slider = document.getElementById('stretchSlider');
-
-  slider.addEventListener('input', (e) => {
-    const val = e.target.value;
-    resizable.style.width = val + '%';
-    chart.resize();
-  });
-
   document.getElementById('resetZoom').addEventListener('click', () => {
-    slider.value = 100;
     resizable.style.width = '100%';
     chart.resetZoom();
     chart.options.scales.x.min = undefined;
     chart.options.scales.x.max = undefined;
     chart.update();
+    wrapper.scrollLeft = 0;
   });
 }
 
