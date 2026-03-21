@@ -147,19 +147,57 @@ async function init() {
 }
 
 // 1-2-1 Weighted Moving Average for SAO
+// REPLACED by Backwards-Anchored Trend Fitting
 function calculateSAO(bonds) {
-  return bonds.map((bond, i) => {
-    const prev = bonds[i - 1];
-    const next = bonds[i + 1];
-    if (prev && next) {
-      return (prev.saYield + (bond.saYield * 2) + next.saYield) / 4;
-    } else if (prev) {
-      return (prev.saYield + (bond.saYield * 2)) / 3;
-    } else if (next) {
-      return ((bond.saYield * 2) + next.saYield) / 3;
+  const n = bonds.length;
+  const sao = new Array(n);
+  const now = new Date();
+
+  // Process from longest maturity to shortest
+  for (let i = n - 1; i >= 0; i--) {
+    const bond = bonds[i];
+    const yearsToMat = (bond.maturityDate - now) / 31557600000;
+
+    // 1. Long end (> 7 years): SAO strictly follows SA
+    if (yearsToMat > 7 || i > n - 5) {
+      sao[i] = bond.saYield;
+      continue;
     }
-    return bond.saYield;
-  });
+
+    // 2. Short to Medium end: Fit to the trend established by longer maturities
+    // Use a window of the next 5 bonds to project the "ideal" yield for this maturity
+    const windowSize = Math.min(5, n - 1 - i);
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    
+    for (let j = 1; j <= windowSize; j++) {
+      // X = days from current bond maturity
+      const x = (bonds[i + j].maturityDate - bond.maturityDate) / 86400000;
+      const y = sao[i + j];
+      sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x;
+    }
+
+    const slope = (windowSize * sumXY - sumX * sumY) / (windowSize * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / windowSize;
+
+    // Projected yield based on the trend from the right
+    let projected = intercept;
+
+    // Constraint: If trend is positive (sloping up to the right), 
+    // the shorter maturity yield must not exceed the next longer one.
+    if (slope > 0) {
+      projected = Math.min(projected, sao[i + 1]);
+    }
+
+    // 3. Blend logic:
+    // As we get closer to the short end, we trust the trend more than the individual bond's SA yield
+    // (because the "outlier" component O increases near maturity)
+    let trendWeight = 0.5; // Default 50/50 blend
+    if (yearsToMat < 2) trendWeight = 0.85; // < 2 years: mostly trust the curve
+    else if (yearsToMat < 4) trendWeight = 0.7;
+
+    sao[i] = (projected * trendWeight) + (bond.saYield * (1 - trendWeight));
+  }
+  return sao;
 }
 
 function processAndRender() {
