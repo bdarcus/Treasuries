@@ -348,10 +348,10 @@ let chart = null;
 function renderChart(bonds) {
   const ctx = document.getElementById('yieldChart').getContext('2d');
   
-  // Use {x: timestamp, y: yield} for continuous linear scaling (fixing the "category zoom" issue)
-  const askData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: (b.askYield * 100).toFixed(3) }));
-  const saData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: (b.saYield * 100).toFixed(3) }));
-  const saoData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: (b.saoYield * 100).toFixed(3) }));
+  // Use Numbers, not strings, for linear scales to ensure proper range calculation and zooming
+  const askData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: parseFloat((b.askYield * 100).toFixed(3)) }));
+  const saData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: parseFloat((b.saYield * 100).toFixed(3)) }));
+  const saoData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: parseFloat((b.saoYield * 100).toFixed(3)) }));
 
   if (chart) chart.destroy();
 
@@ -385,7 +385,7 @@ function renderChart(bonds) {
           data: saoData,
           borderColor: '#1a56db', // Bold Blue
           backgroundColor: 'transparent',
-          borderWidth: 3,
+          borderWidth: 3.5, // Even bolder
           pointRadius: 3,
           tension: 0.1,
           order: 1
@@ -395,6 +395,7 @@ function renderChart(bonds) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false, // Disable animations for faster response during zoom/pan
       interaction: { mode: 'index', intersect: false },
       scales: {
         x: { 
@@ -411,15 +412,13 @@ function renderChart(bonds) {
         y: { 
           type: 'linear',
           display: true, 
-          title: { display: true, text: 'Yield (%)' }
+          title: { display: true, text: 'Yield (%)' },
+          beginAtZero: false, // Don't force 0, let data fill the space
+          grace: '5%' // Small padding at top/bottom
         }
       },
       plugins: {
         zoom: {
-          limits: {
-            x: { min: 'original', max: 'original' },
-            y: { min: 'original', max: 'original' }
-          },
           pan: { 
             enabled: true, 
             mode: 'x', // Toggle to 'y' on Ctrl
@@ -427,7 +426,7 @@ function renderChart(bonds) {
           zoom: { 
             wheel: { enabled: true }, 
             pinch: { enabled: true }, 
-            mode: 'xy' 
+            mode: 'xy' // Always zoom both to allow "filling the space"
           }
         },
         tooltip: {
