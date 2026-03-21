@@ -355,10 +355,11 @@ function renderChart(bonds) {
   const saData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: parseFloat((b.saYield * 100).toFixed(3)) }));
   const saoData = bonds.map(b => ({ x: b.maturityDate.getTime(), y: parseFloat((b.saoYield * 100).toFixed(3)) }));
 
-  // Explicitly set X bounds to prevent the "Sep 2020" default behavior
-  const minX = Math.min(...askData.map(d => d.x));
-  const maxX = Math.max(...askData.map(d => d.x));
-  const xPadding = (maxX - minX) * 0.03;
+  // Explicitly set X bounds aligned to Jan 1st for consistent month labels
+  const firstBondDate = new Date(Math.min(...askData.map(d => d.x)));
+  const lastBondDate = new Date(Math.max(...askData.map(d => d.x)));
+  const minX = new Date(firstBondDate.getFullYear(), 0, 1).getTime();
+  const maxX = new Date(lastBondDate.getFullYear() + 1, 0, 1).getTime();
 
   // Calculate Y bounds rounded to nearest 0.25
   const allY = [...askData, ...saData, ...saoData].map(d => d.y);
@@ -379,7 +380,7 @@ function renderChart(bonds) {
           borderColor: '#1a56db', // Bold Blue
           backgroundColor: '#1a56db',
           borderWidth: 2.2,
-          pointRadius: 3, // Smaller point size
+          pointRadius: 2.5, // Even smaller
           pointStyle: 'circle',
           tension: 0.1,
           order: 1
@@ -390,9 +391,9 @@ function renderChart(bonds) {
           borderColor: '#475569', // Dark Gray
           backgroundColor: '#475569',
           borderWidth: 1.8,
-          pointRadius: 4, // Slightly smaller
+          pointRadius: 4, 
           pointStyle: 'crossRot', // X shape
-          tension: 0.1, // All solid lines
+          tension: 0.1,
           order: 2
         },
         {
@@ -401,7 +402,7 @@ function renderChart(bonds) {
           borderColor: '#94a3b8', // Medium Gray
           backgroundColor: '#94a3b8',
           borderWidth: 1.5,
-          pointRadius: 3.5, // Slightly smaller
+          pointRadius: 3.5, 
           pointStyle: 'rect', // Square
           tension: 0.1,
           order: 3
@@ -418,9 +419,17 @@ function renderChart(bonds) {
           type: 'linear',
           display: true, 
           title: { display: true, text: 'Maturity' },
-          min: minX - xPadding,
-          max: maxX + xPadding,
+          min: minX,
+          max: maxX,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)',
+            minor: {
+              enabled: true,
+              color: 'rgba(0, 0, 0, 0.02)'
+            }
+          },
           ticks: {
+            maxTicksLimit: 20, // More vertical gridlines
             callback: (val) => {
               const date = new Date(val);
               return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -434,8 +443,11 @@ function renderChart(bonds) {
           min: minY,
           max: maxY,
           beginAtZero: false,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+          },
           ticks: {
-            stepSize: 0.25 // Force equally spaced gridlines at 0.25 resolution
+            stepSize: 0.25 
           }
         }
       },
