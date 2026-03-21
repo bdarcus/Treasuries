@@ -462,6 +462,20 @@ function renderChart(bonds) {
         }
       },
       plugins: {
+        legend: {
+          labels: {
+            usePointStyle: true, // Use circle/X/square icons in the legend
+            boxWidth: 8,
+            padding: 15,
+            font: { size: 12, weight: '500' }
+          },
+          onHover: (e) => {
+            e.native.target.style.cursor = 'pointer';
+          },
+          onLeave: (e) => {
+            e.native.target.style.cursor = 'default';
+          }
+        },
         zoom: {
           pan: { 
             enabled: true, 
