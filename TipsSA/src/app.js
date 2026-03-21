@@ -443,7 +443,7 @@ function renderChart(bonds) {
         zoom: {
           pan: { 
             enabled: true, 
-            mode: 'x',
+            mode: 'xy', // Enable free-form panning in all directions
           },
           zoom: { 
             wheel: { enabled: true }, 
@@ -468,19 +468,5 @@ function renderChart(bonds) {
     chart.resetZoom();
   };
 }
-
-// Dynamic Pan Mode: X by default, Y when Control is held
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Control' && chart) {
-    chart.options.plugins.zoom.pan.mode = 'y';
-    chart.update('none');
-  }
-});
-window.addEventListener('keyup', (e) => {
-  if (e.key === 'Control' && chart) {
-    chart.options.plugins.zoom.pan.mode = 'x';
-    chart.update('none');
-  }
-});
 
 init();
