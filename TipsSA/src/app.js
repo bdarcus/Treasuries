@@ -513,8 +513,12 @@ function renderChart(bonds) {
   });
 
   document.getElementById('resetZoom').onclick = () => {
-    chart.resetZoom();
-    updateDynamicTicks(chart);
+    chart.options.scales.x.min = minX;
+    chart.options.scales.x.max = maxX;
+    chart.options.scales.y.min = minY;
+    chart.options.scales.y.max = maxY;
+    chart.options.scales.y.ticks.stepSize = 0.25;
+    chart.update();
   };
 }
 
