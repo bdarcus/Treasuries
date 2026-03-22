@@ -68,6 +68,33 @@
   tbody td { padding: 4px 10px; border-bottom: 1px solid #f1f5f9; font-variant-numeric: tabular-nums; }
   tbody tr:hover td { background: #fffde7; }
 
+  /* ── Sidebar Drag and Drop ── */
+  .col-item { cursor: move; user-select: none; }
+  .col-item.dragging { opacity: 0.5; background: #f1f5f9; }
+  .col-item.drag-over { border-top: 2px solid #1a56db; }
+
+  /* ── Column Resizing ── */
+  thead th { position: relative; }
+  .resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 21;
+  }
+  .resizer:hover { background: rgba(255, 255, 255, 0.3); }
+
+  /* ── Header Drag and Drop ── */
+  thead th { cursor: move; }
+  thead th.dragging { opacity: 0.5; background: #334155 !important; }
+  thead th.drag-over { border-left: 2px solid #f59e0b; }
+
+  /* ── Table Layout ── */
+  table { table-layout: auto; width: max-content; }
+
   /* ── Scrollbars ── */
   .col-list::-webkit-scrollbar, .table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
   .col-list::-webkit-scrollbar-track, .table-wrap::-webkit-scrollbar-track { background: #f8fafc; }
@@ -105,9 +132,10 @@
     </div>
 
     <div class="content">
-      <div class="section upcoming-section">
+      <div class="section upcoming-section" id="upcomingSection">
         <div class="section-header">
           <span class="section-title">Upcoming Auctions</span>
+          <button class="btn btn-sm" id="toggleUpcomingBtn" style="margin-left:auto;background:#475569;">Hide</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -120,6 +148,7 @@
       <div class="section historical-section">
         <div class="section-header">
           <span class="section-title">Historical Auctions</span>
+          <button class="btn btn-sm" id="showUpcomingBtn" style="display:none;margin-right:12px;background:#475569;">Show Upcoming</button>
           <div id="date-range" style="display:flex;align-items:center;gap:6px;margin-left:12px;">
             <label style="font-size:11px;color:#64748b;font-weight:600;">From</label>
             <input type="date" id="dateFrom" style="font-size:11px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;">

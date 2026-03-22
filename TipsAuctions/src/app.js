@@ -147,6 +147,9 @@ let filters = {};              // field -> filter string
 let dateFrom = '';
 let dateTo = '';
 
+let orderedColumns = { all: [], bills: [], notesbonds: [], tips: [] };
+let colWidths = {};           // field -> width (px)
+
 const ROW_LIMIT = 100;        // default cap for non-TIPS views when no date range set
 
 // Per-view visible column sets (starts as defaults, user-adjustable)
@@ -170,19 +173,56 @@ function renderColList() {
   const visible = viewCols[activeView];
   const list = document.getElementById('colList');
 
-  list.innerHTML = allColumns.map(f => {
+  // Use the specific order for the active view
+  const cols = orderedColumns[activeView];
+
+  list.innerHTML = cols.map(f => {
     const label = fieldLabel(f);
     const hidden = search && !label.toLowerCase().includes(search) && !f.toLowerCase().includes(search);
     const checked = visible.has(f);
-    return `<div class="col-item${hidden ? ' hidden' : ''}" data-field="${f}">
+    return `<div class="col-item${hidden ? ' hidden' : ''}" data-field="${f}" draggable="true">
       <input type="checkbox" id="col_${f}" ${checked ? 'checked' : ''}>
       <label for="col_${f}">${label}</label>
     </div>`;
   }).join('');
 
-  list.querySelectorAll('.col-item input').forEach(cb => {
+  // Drag-and-drop logic for reordering
+  let draggedField = null;
+
+  list.querySelectorAll('.col-item').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      draggedField = el.dataset.field;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      const targetField = el.dataset.field;
+      if (draggedField && draggedField !== targetField) {
+        const arr = orderedColumns[activeView];
+        const fromIdx = arr.indexOf(draggedField);
+        const toIdx = arr.indexOf(targetField);
+        arr.splice(fromIdx, 1);
+        arr.splice(toIdx, 0, draggedField);
+        renderColList();
+        renderTable();
+      }
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      draggedField = null;
+    });
+
+    // Checkbox change logic
+    const cb = el.querySelector('input');
     cb.addEventListener('change', e => {
-      const f = e.target.closest('.col-item').dataset.field;
+      const f = el.dataset.field;
       if (e.target.checked) viewCols[activeView].add(f);
       else viewCols[activeView].delete(f);
       renderTable();
@@ -200,12 +240,43 @@ function getActiveRows() {
   if (dateTo)   rows = rows.filter(r => r.auction_date <= dateTo);
 
   // Apply column filters
-  const activeFilters = Object.entries(filters).filter(([, v]) => v);
+  const activeFilters = Object.entries(filters).filter(([, v]) => v.trim());
   if (activeFilters.length) {
     rows = rows.filter(r =>
-      activeFilters.every(([f, v]) =>
-        (r[f] || '').toLowerCase().includes(v.toLowerCase())
-      )
+      activeFilters.every(([f, v]) => {
+        const val = (r[f] || '').toString().toLowerCase();
+        const filterStr = v.trim().toLowerCase();
+
+        // Support range filters: >, <, >=, <=
+        const match = filterStr.match(/^(>=|<=|>|<)(.*)$/);
+        if (match) {
+          const op = match[1];
+          const target = match[2].trim();
+          const rVal = r[f];
+          if (rVal === '' || rVal == null) return false;
+
+          // If it's a date field or target looks like a date
+          if (detectFmt(f) === 'date' || /^\d{4}-\d{2}-\d{2}$/.test(target)) {
+            const rowDate = rVal.substring(0, 10);
+            if (op === '>') return rowDate > target;
+            if (op === '<') return rowDate < target;
+            if (op === '>=') return rowDate >= target;
+            if (op === '<=') return rowDate <= target;
+          }
+
+          // Numeric comparison
+          const nRow = parseFloat(rVal);
+          const nTarget = parseFloat(target);
+          if (!isNaN(nRow) && !isNaN(nTarget)) {
+            if (op === '>') return nRow > nTarget;
+            if (op === '<') return nRow < nTarget;
+            if (op === '>=') return nRow >= nTarget;
+            if (op === '<=') return nRow <= nTarget;
+          }
+        }
+
+        return val.includes(filterStr);
+      })
     );
   }
 
@@ -230,7 +301,7 @@ function getActiveRows() {
 
 // ── Render table ──────────────────────────────────────────────────────────────
 function renderTable() {
-  const cols = allColumns.filter(f => viewCols[activeView].has(f));
+  const cols = (orderedColumns[activeView] || []).filter(f => viewCols[activeView].has(f));
   const rows = getActiveRows();
 
   // Header row + filter row
@@ -239,13 +310,18 @@ function renderTable() {
     <tr>
       ${cols.map(f => {
         const cls = sortCol === f ? (sortAsc ? 'sort-asc' : 'sort-desc') : '';
-        return `<th class="${cls}" data-field="${f}">${fieldLabel(f)}</th>`;
+        const width = colWidths[f] ? `style="width:${colWidths[f]}px;min-width:${colWidths[f]}px;"` : '';
+        return `<th class="${cls}" data-field="${f}" ${width}>
+          ${fieldLabel(f)}
+          <div class="resizer"></div>
+        </th>`;
       }).join('')}
     </tr>
     <tr class="filter-row">
       ${cols.map(f => {
         const val = filters[f] || '';
-        return `<td><input class="filter-input${val ? ' active' : ''}" type="text" data-field="${f}" value="${val}" placeholder="…"></td>`;
+        const width = colWidths[f] ? `style="width:${colWidths[f]}px;min-width:${colWidths[f]}px;"` : '';
+        return `<td ${width}><input class="filter-input${val ? ' active' : ''}" type="text" data-field="${f}" value="${val}" placeholder="…"></td>`;
       }).join('')}
     </tr>
   `;
@@ -259,11 +335,41 @@ function renderTable() {
         td.style.top = hdr.offsetHeight + 'px';
       });
     }
+    initResizing();
   });
 
   // Sort click handlers on header cells
   thead.querySelectorAll('th[data-field]').forEach(th => {
-    th.addEventListener('click', () => {
+    th.draggable = true;
+    th.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', th.dataset.field);
+      th.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    th.addEventListener('dragover', e => {
+      e.preventDefault();
+      th.classList.add('drag-over');
+    });
+    th.addEventListener('dragleave', () => th.classList.remove('drag-over'));
+    th.addEventListener('drop', e => {
+      e.preventDefault();
+      th.classList.remove('drag-over');
+      const draggedField = e.dataTransfer.getData('text/plain');
+      const targetField = th.dataset.field;
+      if (draggedField && draggedField !== targetField) {
+        const arr = orderedColumns[activeView];
+        const fromIdx = arr.indexOf(draggedField);
+        const toIdx = arr.indexOf(targetField);
+        arr.splice(fromIdx, 1);
+        arr.splice(toIdx, 0, draggedField);
+        renderTable();
+        renderColList(); // Sync sidebar
+      }
+    });
+    th.addEventListener('dragend', () => th.classList.remove('dragging'));
+
+    th.addEventListener('click', e => {
+      if (e.target.classList.contains('resizer')) return;
       const f = th.dataset.field;
       if (sortCol === f) sortAsc = !sortAsc;
       else { sortCol = f; sortAsc = true; }
@@ -291,7 +397,10 @@ function renderBody(cols) {
   const { displayRows, totalRows, capped } = getActiveRows();
   const tbody = document.getElementById('mainTbody');
   tbody.innerHTML = displayRows.map(r =>
-    `<tr>${cols.map(f => `<td>${fmtVal(r[f], detectFmt(f))}</td>`).join('')}</tr>`
+    `<tr>${cols.map(f => {
+      const width = colWidths[f] ? `style="width:${colWidths[f]}px;min-width:${colWidths[f]}px;"` : '';
+      return `<td data-field="${f}" ${width}>${fmtVal(r[f], detectFmt(f))}</td>`;
+    }).join('')}</tr>`
   ).join('');
   const countEl = document.getElementById('row-count');
   if (capped) {
@@ -335,6 +444,10 @@ async function loadData() {
     const { headers, rows } = parseCSV(csvResult.value);
     allColumns = headers;
     allData = rows;
+    // Initialize default order for all views if not already set
+    ['all', 'bills', 'notesbonds', 'tips'].forEach(v => {
+      if (!orderedColumns[v].length) orderedColumns[v] = [...allColumns];
+    });
     renderColList();
     renderTable();
   } else {
@@ -348,6 +461,47 @@ async function loadData() {
 
   setStatus(`Updated: ${new Date().toLocaleTimeString()}`);
 }
+
+// ── Resizing Logic ───────────────────────────────────────────────────────────
+let isResizing = false;
+let startX, startWidth, resizerField;
+
+function initResizing() {
+  const resizers = document.querySelectorAll('.resizer');
+  resizers.forEach(resizer => {
+    resizer.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation(); // prevent sort
+      isResizing = true;
+      resizerField = resizer.parentElement.dataset.field;
+      startX = e.pageX;
+      startWidth = resizer.parentElement.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+    });
+  });
+}
+
+window.addEventListener('mousemove', e => {
+  if (!isResizing) return;
+  const width = Math.max(30, startWidth + (e.pageX - startX));
+  colWidths[resizerField] = width;
+
+  // Real-time update all cells in this column for smooth feel
+  const cells = document.querySelectorAll(`[data-field="${resizerField}"]`);
+  cells.forEach(c => {
+    c.style.width = width + 'px';
+    c.style.minWidth = width + 'px';
+  });
+  // Also update body cells (not tagged with data-field) - simpler to just re-render on mouseup
+});
+
+window.addEventListener('mouseup', () => {
+  if (isResizing) {
+    isResizing = false;
+    document.body.style.cursor = '';
+    renderTable(); // finalized re-render
+  }
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 function init() {
@@ -374,6 +528,8 @@ function init() {
   // Reset defaults
   document.getElementById('resetColsBtn').addEventListener('click', () => {
     viewCols[activeView] = new Set(DEFAULT_COLS[activeView]);
+    orderedColumns[activeView] = [...allColumns]; // reset to original order
+    colWidths = {}; // clear widths
     renderColList();
     renderTable();
   });
@@ -396,6 +552,20 @@ function init() {
 
   // Refresh
   document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+  // Toggle upcoming
+  const upcomingSect = document.getElementById('upcomingSection');
+  const toggleBtn = document.getElementById('toggleUpcomingBtn');
+  const showBtn = document.getElementById('showUpcomingBtn');
+
+  toggleBtn.addEventListener('click', () => {
+    upcomingSect.style.display = 'none';
+    showBtn.style.display = 'inline-block';
+  });
+  showBtn.addEventListener('click', () => {
+    upcomingSect.style.display = 'flex';
+    showBtn.style.display = 'none';
+  });
 
   loadData();
 }
