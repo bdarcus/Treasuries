@@ -97,6 +97,7 @@ function setupUI() {
       .color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
       .sym-code { font-weight: 700; color: #1e293b; }
       #fetchStatus { font-size: 11px; color: #64748b; margin-top: 20px; font-style: italic; }
+      .no-data-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #94a3b8; background: rgba(255,255,255,0.85); pointer-events: none; }
     </style>
     <div class="range-picker">${rangeHtml}</div>
     <div class="sym-group">
@@ -382,20 +383,31 @@ async function updateAllData() {
   const promises = Array.from(activeSymbols).map(async sym => {
     const data = await fetchOne(sym, activeRange);
     const chart = charts[sym];
-    if (chart && data) {
+    const card = document.getElementById(`card-${sym}`);
+
+    // Remove any existing no-data overlay
+    const existing = card?.querySelector('.no-data-overlay');
+    if (existing) existing.remove();
+
+    if (chart && data && data.length > 0) {
       chart.data.datasets[0].data = data;
-      
+
       chart.options.scales.x.time.tooltipFormat = isIntraday ? 'MM/dd/yy HH:mm:ss' : 'MM/dd/yy';
-      chart.options.scales.x.time.displayFormats = isIntraday 
+      chart.options.scales.x.time.displayFormats = isIntraday
         ? { hour: 'MM/dd HH:mm', minute: 'HH:mm:ss', day: 'MMM dd' }
         : { day: 'MMM dd', month: 'MMM yyyy', year: 'yyyy' };
-      
+
       chart.options.scales.x.ticks.minRotation = shouldSlant ? 45 : 0;
       chart.options.scales.x.ticks.maxRotation = shouldSlant ? 45 : 0;
 
       updateDynamicTicks(chart, data);
       chart.update();
       chart.resetZoom();
+    } else if (card) {
+      const overlay = document.createElement('div');
+      overlay.className = 'no-data-overlay';
+      overlay.textContent = 'No data available for this range';
+      card.querySelector('.chart-container').appendChild(overlay);
     }
   });
 
