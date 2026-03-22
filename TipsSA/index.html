@@ -10,20 +10,33 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; font-size: 13px; margin: 0; padding: 20px; color: #222; background: #fafafa; }
-  h1 { font-size: 18px; margin: 0 0 16px; }
+  body { font-family: system-ui, sans-serif; font-size: 13px; margin: 0; padding: 0; color: #222; background: #fafafa; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  
+  header { padding: 16px 20px 8px; flex-shrink: 0; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
 
-  .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  /* ── Layout ── */
+  #main-container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  #pane-top { flex: 0 0 450px; min-height: 100px; display: flex; flex-direction: column; padding: 0 20px; }
+  #pane-bottom { flex: 1; min-height: 100px; display: flex; flex-direction: column; padding: 0 20px 20px; }
+  
+  /* ── Splitter ── */
+  #divider { height: 8px; background: #e2e8f0; cursor: ns-resize; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  #divider:hover { background: #cbd5e1; }
+  #divider::after { content: ""; width: 32px; height: 2px; background: #94a3b8; border-radius: 1px; }
+
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .card-header { display:flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 12px; border-radius: 8px 8px 0 0; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
   
   /* ── Status ── */
-  #status { margin-bottom: 12px; font-size: 12px; color: #555; }
+  #status { margin-bottom: 8px; font-size: 12px; color: #555; }
   #status.error { color: #c0392b; font-weight: 600; }
 
   /* ── Chart ── */
-  .chart-container { position: relative; height: 400px; width: 100%; margin-bottom: 20px; }
+  .chart-area { flex: 1; min-height: 0; background: #fff; padding: 10px; position: relative; }
 
   /* ── Main table ── */
-  .table-scroll-wrap { overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; max-height: 600px; }
+  .table-scroll-wrap { overflow: auto; flex: 1; min-height: 0; }
   table.main { border-collapse: collapse; width: 100%; background: #fff; font-size: 12px; }
   table.main th { background: #1e293b; color: #fff; padding: 8px 12px; text-align: right; font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
   table.main th:first-child, table.main th:nth-child(2) { text-align: left; }
@@ -34,78 +47,118 @@
   .pos { color: #16a34a; font-weight: 600; } 
   .neg { color: #dc2626; font-weight: 600; }
 
-  #info-strip { font-size: 12px; color: #64748b; margin-bottom: 12px; }
+  #info-strip { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+  
+  footer { font-size: 11px; color: #94a3b8; padding: 8px 0; display: flex; justify-content: center; gap: 20px; flex-shrink: 0; }
 </style>
 </head>
 <body>
-  <h1>TIPS Seasonal Adjustments (TipsSA)</h1>
-  
-  <div id="status">Loading data...</div>
-  
-  <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap: wrap;">
-    <div class="card" style="margin-bottom:0; padding: 8px 12px; display:flex; align-items:center; gap:10px;">
-      <label style="font-size:11px; font-weight:600; color:#64748b;">LOAD BROKER PRICES (CSV):</label>
-      <input type="file" id="brokerFile" accept=".csv" style="font-size:11px;">
+  <header>
+    <h1>TIPS Seasonal Adjustments (TipsSA)</h1>
+    <div id="status">Loading data...</div>
+    
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px; flex-wrap: wrap;">
+      <div style="background:#fff; border:1px solid #ddd; border-radius:6px; padding: 4px 10px; display:flex; align-items:center; gap:8px;">
+        <label style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase;">Load Broker CSV:</label>
+        <input type="file" id="brokerFile" accept=".csv" style="font-size:11px;">
+      </div>
+      <div id="priceSource" style="font-size:12px; display:none; align-items:center; gap:10px;">
+        <span id="priceSourceLabel" style="color:#1a56db; font-weight:600;"></span>
+        <button id="resetFedInvest" style="padding: 2px 8px; font-size: 10px; background:#fff; color:#1a56db; border:1px solid #1a56db; border-radius:4px; cursor:pointer; font-weight:600;">RESET TO FEDINVEST</button>
+      </div>
+      <div id="info-strip" style="margin-bottom:0; margin-left: auto;"></div>
     </div>
-    <div id="priceSource" style="font-size:12px; display:none; align-items:center; gap:10px;">
-      <span id="priceSourceLabel" style="color:#1a56db; font-weight:600;"></span>
-      <button id="resetFedInvest" style="padding: 2px 8px; font-size: 10px; background:#fff; color:#1a56db; border:1px solid #1a56db; border-radius:4px; cursor:pointer; font-weight:600;">RESET TO FEDINVEST</button>
-    </div>
-  </div>
+  </header>
 
-  <div id="info-strip"></div>
-
-  <div class="card">
-    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 15px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-      <h3 style="margin:0; font-size:14px; color:#1e293b;">Yield Curve</h3>
-      <div style="display:flex; align-items:center; gap:16px;">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <label style="font-size:11px; font-weight:700; color:#475569;">MATURITY RANGE:</label>
-          <select id="startMaturity" style="font-size:12px; padding:3px 6px; border-radius:4px; border:1px solid #cbd5e1; background:#fff;"></select>
-          <span style="font-size:11px; color:#64748b;">to</span>
-          <select id="endMaturity" style="font-size:12px; padding:3px 6px; border-radius:4px; border:1px solid #cbd5e1; background:#fff;"></select>
+  <div id="main-container">
+    <div id="pane-top">
+      <div class="card">
+        <div class="card-header">
+          <h3 style="margin:0; font-size:13px; color:#1e293b;">Yield Curve</h3>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <label style="font-size:10px; font-weight:700; color:#475569;">RANGE:</label>
+              <select id="startMaturity" style="font-size:11px; padding:2px 4px; border-radius:4px; border:1px solid #cbd5e1; background:#fff;"></select>
+              <span style="font-size:10px; color:#64748b;">to</span>
+              <select id="endMaturity" style="font-size:11px; padding:2px 4px; border-radius:4px; border:1px solid #cbd5e1; background:#fff;"></select>
+            </div>
+            <button id="resetZoom" style="padding: 3px 10px; font-size: 11px; background:#1e293b; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Reset View</button>
+          </div>
         </div>
-        <button id="resetZoom" style="padding: 4px 12px; font-size: 11px; background:#1e293b; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Reset View</button>
+        <div class="chart-area">
+          <canvas id="yieldChart"></canvas>
+        </div>
+        <div style="font-size:10px; color:#94a3b8; padding:4px 12px; border-top:1px solid #f1f5f9; display:flex; gap:15px;">
+          <span><b>Zoom:</b> Wheel / +/- keys</span>
+          <span><b>Pan:</b> Drag / Arrows</span>
+          <span><b>Series:</b> Click Legend</span>
+        </div>
       </div>
     </div>
-    <div style="height: 450px; width: 100%; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px;">
-      <canvas id="yieldChart"></canvas>
-    </div>
-    <div style="font-size:10px; color:#94a3b8; margin-top:8px; display:flex; gap:15px;">
-      <span><b>Zoom:</b> Mouse Wheel (XY)</span>
-      <span><b>Pan:</b> Drag (XY)</span>
-      <span><b>Show/Hide Series:</b> Click Legend</span>
+
+    <div id="divider"></div>
+
+    <div id="pane-bottom">
+      <div class="card">
+        <div class="table-scroll-wrap">
+          <table class="main" id="saTable">
+            <thead>
+              <tr>
+                <th>Maturity</th>
+                <th>CUSIP</th>
+                <th>Coupon</th>
+                <th>Price</th>
+                <th>Ask Yield</th>
+                <th>SA Yield</th>
+                <th>SAO Yield</th>
+                <th>Diff (bps)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- Rows added via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="table-scroll-wrap">
-      <table class="main" id="saTable">
-        <thead>
-          <tr>
-            <th>Maturity</th>
-            <th>CUSIP</th>
-            <th>Coupon</th>
-            <th>Price</th>
-            <th>Ask Yield</th>
-            <th>SA Yield</th>
-            <th>SAO Yield</th>
-            <th>Diff (bps)</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <!-- Rows added via JS -->
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <footer style="margin-top: 32px; font-size: 12px; color: #94a3b8; text-align: center; padding-bottom: 24px;">
-    A free contribution to the <a href="https://www.bogleheads.org/" style="color: #64748b; text-decoration: none; border-bottom: 1px dotted #cbd5e1;">Bogleheads</a> community.
-    <br><br>
+  <footer>
+    <span>A free contribution to the <a href="https://www.bogleheads.org/" style="color: #64748b; text-decoration: none; border-bottom: 1px dotted #cbd5e1;">Bogleheads</a> community.</span>
     <a href="../vision.html" style="color: #64748b; text-decoration: none; font-weight: 600;">Read Project Vision</a>
   </footer>
 
+  <script>
+    // Resizable Divider Logic
+    const divider = document.getElementById('divider');
+    const topPane = document.getElementById('pane-top');
+    const mainContainer = document.getElementById('main-container');
+    let isDragging = false;
+
+    divider.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      document.body.style.cursor = 'ns-resize';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const containerRect = mainContainer.getBoundingClientRect();
+      const relativeY = e.clientY - containerRect.top;
+      const height = Math.max(100, Math.min(relativeY, containerRect.height - 100));
+      topPane.style.flex = `0 0 ${height}px`;
+      
+      // Trigger chart resize if available
+      if (window.chart) window.chart.resize();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.cursor = 'default';
+      }
+    });
+  </script>
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>

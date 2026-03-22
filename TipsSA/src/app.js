@@ -462,6 +462,12 @@ function renderChart(bonds) {
           }
         },
         tooltip: {
+          backgroundColor: 'rgba(30, 41, 59, 0.8)',
+          padding: 6,
+          titleFont: { size: 11 },
+          bodyFont: { size: 11 },
+          cornerRadius: 4,
+          displayColors: false,
           callbacks: {
             title: (items) => {
               const date = new Date(items[0].parsed.x);
