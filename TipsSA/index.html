@@ -48,8 +48,8 @@
   .neg { color: #dc2626; font-weight: 600; }
 
   /* ── Drillable & Info ── */
-  .info-link { color: #1a56db; text-decoration: none; cursor: pointer; border-bottom: 1px dotted #1a56db; font-size: 11px; margin-left: 4px; vertical-align: middle; }
-  .info-link:hover { color: #1748c0; }
+  .col-help { color: inherit; text-decoration: underline dotted #94a3b8; text-underline-offset: 3px; cursor: pointer; }
+  .col-help:hover { color: #1a56db; text-decoration-color: #1a56db; }
   .drillable { cursor: pointer; text-decoration: underline dotted #94a3b8; }
   .drillable:hover { background: #fef9c3 !important; }
 
@@ -110,14 +110,14 @@
           <table class="main" id="saTable">
             <thead>
               <tr>
-                <th>Maturity</th>
-                <th>CUSIP</th>
-                <th>Coupon</th>
-                <th>Price</th>
-                <th>Ask Yield</th>
-                <th>SA Yield <span class="info-link" id="why-adjust-link">WHY?</span></th>
-                <th>SAO Yield</th>
-                <th>Diff (bps)</th>
+                <th><a class="col-help" href="#" data-col="maturity">Maturity</a></th>
+                <th><a class="col-help" href="#" data-col="cusip">CUSIP</a></th>
+                <th><a class="col-help" href="#" data-col="coupon">Coupon</a></th>
+                <th><a class="col-help" href="#" data-col="price">Price</a></th>
+                <th><a class="col-help" href="#" data-col="ask-yield">Ask Yield</a></th>
+                <th><a class="col-help" href="#" data-col="sa-yield">SA Yield</a></th>
+                <th><a class="col-help" href="#" data-col="sao-yield">SAO Yield</a></th>
+                <th><a class="col-help" href="#" data-col="diff">Diff (bps)</a></th>
               </tr>
             </thead>
             <tbody id="tableBody">

@@ -110,27 +110,65 @@ function _showDrillPopup(title, html) {
   ov.style.display = 'flex';
 }
 
-async function _showIntuitionGuide() {
-  try {
-    const res = await fetch('./knowledge/4.0_SA_Intuition.md');
-    const md = await res.text();
-    const html = md
-      .replace(/^# (.*$)/gm, '<h1 style="font-size:1.5em;margin:0 0 16px;color:#1a56db;">$1</h1>')
-      .replace(/^## (.*$)/gm, '<h2 style="font-size:1.2em;margin:20px 0 12px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">$1</h2>')
-      .replace(/^### (.*$)/gm, '<h3 style="font-size:1em;margin:16px 0 8px;color:#334155;">$1</h3>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/^- (.*$)/gm, '<li style="margin-bottom:6px;">$1</li>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^/, '<p>')
-      .replace(/$/, '</p>')
-      .replace(/<p><li>/g, '<ul style="margin-bottom:16px;"><li>')
-      .replace(/<\/li><\/p>/g, '</li></ul>');
-    
-    _showDrillPopup('Intuition: Seasonal Adjustments', html);
-  } catch (err) {
-    alert('Failed to load guide: ' + err.message);
+const COL_HELP = {
+  'maturity': {
+    title: 'Maturity',
+    html: `<p>The maturity date of the TIPS bond — the date on which the Treasury repays principal.</p>
+<p>Most TIPS mature in <strong>January/February</strong> or <strong>July/October</strong>, which places them on opposite sides of the seasonal inflation cycle.</p>`
+  },
+  'cusip': {
+    title: 'CUSIP',
+    html: `<p>A 9-character identifier assigned by DTCC that uniquely identifies this Treasury security.</p>
+<p>The first 6 digits identify the issuer (Treasury), the next 2 identify the specific issue, and the last digit is a check digit.</p>`
+  },
+  'coupon': {
+    title: 'Coupon',
+    html: `<p>The annual interest rate paid by the bond, expressed as a percentage of <strong>face value</strong>.</p>
+<p>TIPS coupons are paid semi-annually. Because the principal is inflation-adjusted, the actual dollar coupon payment grows (or shrinks) with CPI even though the coupon rate is fixed.</p>`
+  },
+  'price': {
+    title: 'Price',
+    html: `<p>The market price per <strong>$100 face value</strong>, sourced from FedInvest mid-market data or uploaded broker ask quotes.</p>
+<p>TIPS prices are quoted on the <em>real</em> (inflation-adjusted) principal. The actual dollar amount paid at settlement is: <code>Price / 100 × Index Ratio × Face Value</code>.</p>`
+  },
+  'ask-yield': {
+    title: 'Ask Yield',
+    html: `<p>Yield to maturity (YTM) calculated directly from the market price using standard Treasury bond math (semi-annual compounding).</p>
+<p>This is the <strong>nominal real yield</strong> — it includes any distortion from seasonal inflation patterns baked into the bond's price.</p>`
+  },
+  'sa-yield': {
+    title: 'SA Yield — Seasonal Adjustment',
+    html: `<p>The market price is first multiplied by the ratio <code>S(settle) / S(maturity)</code> — the BLS seasonal factors at the settlement date and maturity date — before computing YTM.</p>
+<p>This strips out the predictable seasonal inflation carry so bonds can be compared across different maturity months on equal footing.</p>
+<ul style="margin:12px 0 0;padding-left:18px;">
+  <li style="margin-bottom:6px;"><strong>Ratio &lt; 1.0</strong> (settling in a low-factor month, maturing in a high-factor month): price is reduced → yield rises. The bond had a seasonal premium; adjustment removes it.</li>
+  <li style="margin-bottom:6px;"><strong>Ratio &gt; 1.0</strong> (settling in a high-factor month, maturing in a low-factor month): price is increased → yield falls. The bond had a seasonal discount; adjustment compensates for it.</li>
+</ul>
+<p style="margin-top:12px;font-size:11px;color:#94a3b8;">Authority: 31 CFR § 356 Appendix B; Canty (1998)</p>`
+  },
+  'sao-yield': {
+    title: 'SAO Yield — SA Ordinal (Trend-Fitted)',
+    html: `<p>SAO applies a backwards-anchored linear regression to the SA yields of the <strong>next 4 longer-maturity bonds</strong>, then blends the projected value with the bond's own SA yield.</p>
+<p>The blend weight tilts heavily toward the trend for short-maturity bonds, where residual seasonal distortions are largest, and tapers off for longer maturities.</p>
+<ul style="margin:12px 0 0;padding-left:18px;">
+  <li style="margin-bottom:6px;"><strong>Under 6 months:</strong> 90% trend projection, 10% raw SA yield</li>
+  <li style="margin-bottom:6px;"><strong>6 months – 2 years:</strong> 50% trend</li>
+  <li style="margin-bottom:6px;"><strong>2 – 5 years:</strong> 40% trend</li>
+  <li style="margin-bottom:6px;"><strong>Over 7 years:</strong> equals SA yield (no adjustment)</li>
+</ul>
+<p>The result is a <strong>smoothed yield curve</strong> that reveals where the short end should price relative to the longer end, independent of residual seasonal noise.</p>`
+  },
+  'diff': {
+    title: 'Diff (bps)',
+    html: `<p>The difference between <strong>SA Yield</strong> and <strong>Ask Yield</strong>, expressed in basis points (1 bp = 0.01%).</p>
+<p>A positive value means the seasonal adjustment raised the yield (the bond had a seasonal price premium that was stripped out). A negative value means the adjustment lowered the yield (the bond had a seasonal penalty that was compensated).</p>`
   }
+};
+
+function _showColHelp(colKey) {
+  const entry = COL_HELP[colKey];
+  if (!entry) return;
+  _showDrillPopup(entry.title, entry.html);
 }
 
 function _showSaDrill(cusip) {
@@ -559,8 +597,10 @@ document.getElementById('tableBody').addEventListener('click', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-  if (e.target.id === 'why-adjust-link') {
-    _showIntuitionGuide();
+  const link = e.target.closest('a.col-help');
+  if (link) {
+    e.preventDefault();
+    _showColHelp(link.dataset.col);
   }
 });
 
