@@ -134,7 +134,7 @@ const COL_HELP = {
   'ask-yield': {
     title: 'Ask Yield',
     html: `<p>Yield to maturity (YTM) calculated directly from the market price using standard Treasury bond math (semi-annual compounding).</p>
-<p>This is the <strong>nominal real yield</strong> — it includes any distortion from seasonal inflation patterns baked into the bond's price.</p>`
+<p>This is the <strong>quoted real yield</strong> — it includes any distortion from seasonal inflation patterns baked into the bond's price.</p>`
   },
   'sa-yield': {
     title: 'SA Yield — Seasonal Adjustment',
