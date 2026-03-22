@@ -478,6 +478,13 @@ function initResizing() {
       startWidth = resizer.parentElement.offsetWidth;
       document.body.style.cursor = 'col-resize';
     });
+
+    resizer.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      const field = resizer.parentElement.dataset.field;
+      delete colWidths[field];
+      renderTable();
+    });
   });
 }
 

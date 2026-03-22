@@ -56,16 +56,16 @@
 
   /* ── Table ── */
   .table-wrap { overflow: auto; flex: 1; min-height: 0; }
-  table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
-  thead th { background: #1e293b; color: #fff; padding: 4px 6px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 20; cursor: pointer; user-select: none; font-size: 11px; }
+  table { border-collapse: collapse; font-size: 11px; table-layout: auto; width: max-content; }
+  thead th { background: #1e293b; color: #fff; padding: 4px 6px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 20; cursor: pointer; user-select: none; font-size: 11px; white-space: normal; vertical-align: top; line-height: 1.2; }
   thead th:hover { background: #2d3f57; }
   thead th.sort-asc::after { content: ' \2191'; }
   thead th.sort-desc::after { content: ' \2193'; }
   .filter-row td { padding: 2px 4px; position: sticky; background: #f1f5f9; border-bottom: 2px solid #cbd5e1; z-index: 19; }
-  .filter-input { width: 100%; padding: 2px 5px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 3px; outline: none; background: #fff; min-width: 60px; }
+  .filter-input { width: 100%; padding: 2px 5px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 3px; outline: none; background: #fff; min-width: 0; }
   .filter-input:focus { border-color: #1a56db; }
   .filter-input.active { border-color: #f59e0b; background: #fffbeb; }
-  tbody td { padding: 3px 6px; border-bottom: 1px solid #f1f5f9; font-variant-numeric: tabular-nums; font-size: 11px; }
+  tbody td { padding: 3px 6px; border-bottom: 1px solid #f1f5f9; font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
   tbody tr:hover td { background: #fffde7; }
 
   /* ── Sidebar Drag and Drop ── */
