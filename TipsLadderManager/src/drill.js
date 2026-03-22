@@ -35,8 +35,8 @@ function bondVarRows(d, nPeriods, principalPerBond, couponPct) {
     nPerLbl = '2 (' + firstMonthName + ' + ' + matMonthName + ')';
   }
   return row('Ref CPI', '', fd(d.refCPI, 5), false, 'refCPI', 'refcpi')
-    + row('Dated date Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi')
-    + row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Base CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir')
+    + row('Dated Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi')
+    + row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Dated Ref CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir')
     + row('Principal per bond', '1,000 \xd7 <span class="formula-var" data-source="ir">index ratio</span>', fd(principalPerBond, 2), false, undefined, 'ppb')
     + row('Coupon per period', 'annual coupon \xf7 2', couponPct, false, undefined, 'cpp')
     + row('Yield', '', fd(d.yield * 100, 3) + '%')
@@ -79,7 +79,7 @@ export function buildDrillHTML(d, colKey, summary) {
       sep() +
       row('Price (unadjusted)', '', fd(d.price, 4), false, undefined, 'price') +
       row('Ref CPI (settlement date)', '', fd(d.refCPI, 5), false, 'refCPI', 'refcpi') +
-      row('Dated date Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Base CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
+      row('Dated Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Dated Ref CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
       row('Cost per bond', '<span class="formula-var" data-source="price">price/100</span> \xd7 <span class="formula-var" data-source="ir">index ratio</span> \xd7 1,000', fm2(d.costPerBond), false, undefined, 'cpb') +
       sep() +
       row('Funded Year Cost', '<span class="formula-var" data-source="cpb">cost/bond</span> \xd7 <span class="formula-var" data-source="qty">qty</span>', fm(d.fundedYearCost), true);
@@ -154,8 +154,8 @@ export function buildDrillHTML(d, colKey, summary) {
       const lmi  = d.araAfterLaterMatInt ?? 0;
       const net  = _DARA - lmi;
       rows = row('Ref CPI', '', fd(d.refCPI, 5), false, 'refCPI', 'refcpi')
-        + row('Dated date Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi')
-        + row('Index ratio', fd(d.refCPI, 5) + ' / ' + fd(d.baseCpi, 5), fd(d.indexRatio, 5), false, 'indexRatio', 'ir')
+        + row('Dated Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi')
+        + row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Dated Ref CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir')
         + row('Principal per bond', '1,000 \xd7 <span class="formula-var" data-source="ir">index ratio</span>', fd(principalPerBond, 2), false, undefined, 'ppb')
         + row('Coupon per period', 'annual coupon / 2', couponPct, false, undefined, 'cpp')
         + row('Coupon periods in FY', '', nPeriods === 1 ? '1 semi-annual (' + MONTHS[new Date(d.maturityStr).getMonth()] + ')' : '2 (' + MONTHS[(new Date(d.maturityStr).getMonth() - 6 + 12) % 12] + ' + ' + MONTHS[new Date(d.maturityStr).getMonth()] + ')', false, undefined, 'cp')
@@ -183,8 +183,8 @@ export function buildDrillHTML(d, colKey, summary) {
       sep() +
       row('Price (unadjusted)', '', fd(d.price, 4), false, undefined, 'price') +
       row('Ref CPI (settlement date)', '', fd(d.refCPI, 5), false, 'refCPI', 'refcpi') +
-      row('Dated date Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      
-      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Base CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
+      row('Dated Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      
+      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Dated Ref CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
       row('Cost per bond', '<span class="formula-var" data-source="price">price/100</span> \xd7 <span class="formula-var" data-source="ir">index ratio</span> \xd7 1,000', fm2(d.costPerBond), false, undefined, 'cpb') +
       sep() +
       row('Cash \u0394', '\u2212(<span class="formula-var" data-source="qty">Qty delta</span> \xd7 <span class="formula-var" data-source="cpb">cost/bond</span>)', cdSign + fm(Math.abs(cashDelta)), true);
@@ -201,8 +201,8 @@ export function buildDrillHTML(d, colKey, summary) {
       sep() +
       row('Price (unadjusted)', '', fd(d.price, 4), false, undefined, 'price') +
       row('Ref CPI (settlement date)', '', fd(d.refCPI, 5), false, 'refCPI', 'refcpi') +
-      row('Dated date Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      
-      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Base CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
+      row('Dated Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      
+      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Dated Ref CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
       row('Cost per bond', '<span class="formula-var" data-source="price">price/100</span> \xd7 <span class="formula-var" data-source="ir">index ratio</span> \xd7 1,000', fm2(d.costPerBond), false, undefined, 'cpb') +
       sep() +
       row(isBef ? 'Cost Before' : 'Cost After', '<span class="formula-var" data-source="qty">qty</span> \xd7 <span class="formula-var" data-source="cpb">cost/bond</span>', fm(cost), true);
@@ -269,8 +269,8 @@ export function buildDrillHTML(d, colKey, summary) {
       sep() +
       row('Price (unadjusted)', '', fd(d.price, 4), false, undefined, 'price') +
       row('Ref CPI (settlement date)', '', fd(d.refCPI, 5), false, 'refCPI', 'refcpi') +
-      row('Dated date Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      
-      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Base CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
+      row('Dated Ref CPI', '', fd(d.baseCpi, 5), false, undefined, 'basecpi') +      
+      row('Index ratio', '<span class="formula-var" data-source="refcpi">Ref CPI</span> \xf7 <span class="formula-var" data-source="basecpi">Dated Ref CPI</span>', fd(d.indexRatio, 5), false, 'indexRatio', 'ir') +
       sep() +
       row('Cost per bond', '<span class="formula-var" data-source="price">price/100</span> \xd7 <span class="formula-var" data-source="ir">index ratio</span> \xd7 1,000', fm2(d.costPerBond), false, undefined, 'cpb') +
       sep() +
@@ -284,7 +284,7 @@ export function buildDrillHTML(d, colKey, summary) {
 export function buildIndexRatioDrill(d) {
   return [
     { label: 'Settlement Ref CPI', value: fd(d.refCPI, 5) },
-    { label: 'Dated date Ref CPI', value: fd(d.baseCpi, 5) },
+    { label: 'Dated Ref CPI', value: fd(d.baseCpi, 5) },
     { sep: true },
     { label: 'Index Ratio', note: 'Settlement Ref CPI / Dated Ref CPI', value: fd(d.indexRatio, 5), total: true },
     { sep: true },
