@@ -43,6 +43,84 @@ export function bondCalcs(bond, refCPI) {
   return { indexRatio, principalPerBond, costPerBond, nPeriods, couponPerPeriod, ownRungInt, piPerBond, annualInt };
 }
 
+// ─── Yield from price (actual/actual, matches Excel YIELD(...,2,1)) ───────────
+// Spec: 2.1 TIPS Basics (yield calculations)
+// cleanPrice: percentage of par (e.g. 99.5)
+// coupon: annual rate (decimal, e.g. 0.0125)
+// settle: Date object
+// mature: Date object
+export function yieldFromPrice(cleanPrice, coupon, settle, mature) {
+  if (!cleanPrice || cleanPrice <= 0) return null;
+  if (settle >= mature) return null;
+
+  const semiCoupon = (coupon / 2) * 100;
+  const matMon = mature.getMonth() + 1;
+  const cm1 = matMon <= 6 ? matMon : matMon - 6;
+  const cm2 = cm1 + 6;
+
+  function nextCouponOnOrAfter(d) {
+    const candidates = [];
+    for (let y = d.getFullYear() - 1; y <= d.getFullYear() + 1; y++) {
+      candidates.push(new Date(y, cm1 - 1, 15));
+      candidates.push(new Date(y, cm2 - 1, 15));
+    }
+    candidates.sort((a, b) => a - b);
+    return candidates.find(c => c >= d && c <= mature) || null;
+  }
+
+  const nextCoupon = nextCouponOnOrAfter(settle);
+  if (!nextCoupon) return null;
+  const lastCoupon = new Date(nextCoupon.getTime());
+  lastCoupon.setMonth(lastCoupon.getMonth() - 6);
+
+  const days = (a, b) => (b.getTime() - a.getTime()) / 86400000;
+  const E = days(lastCoupon, nextCoupon);
+  const A = days(lastCoupon, settle);
+  const DSC = days(settle, nextCoupon);
+  const accrued = semiCoupon * (A / E);
+  const dirtyPrice = cleanPrice + accrued;
+  const w = DSC / E;
+
+  const coupons = [];
+  let d = new Date(nextCoupon);
+  while (d <= mature) {
+    coupons.push(new Date(d));
+    d = new Date(d.getTime());
+    d.setMonth(d.getMonth() + 6);
+  }
+  const N = coupons.length;
+  if (N === 0) return null;
+
+  function pv(y) {
+    const r = y / 2;
+    let s = 0;
+    for (let k = 0; k < N; k++) {
+      const cf = k === N - 1 ? semiCoupon + 100 : semiCoupon;
+      s += cf / Math.pow(1 + r, w + k);
+    }
+    return s;
+  }
+  function dpv(y) {
+    const r = y / 2;
+    let s = 0;
+    for (let k = 0; k < N; k++) {
+      const cf = k === N - 1 ? semiCoupon + 100 : semiCoupon;
+      s += (-cf * (w + k)) / (2 * Math.pow(1 + r, w + k + 1));
+    }
+    return s;
+  }
+
+  let y = coupon > 0.005 ? coupon : 0.02;
+  for (let i = 0; i < 200; i++) {
+    const diff = pv(y) - dirtyPrice;
+    if (Math.abs(diff) < 1e-10) break;
+    const deriv = dpv(y);
+    if (Math.abs(deriv) < 1e-15) break;
+    y -= diff / deriv;
+  }
+  return y;
+}
+
 // ─── Rung amount ──────────────────────────────────────────────────────────────
 // Spec: 5.0 §rungAmount, 4.0 Phase 5 ARA After formula
 export function rungAmount(qty, piPerBond, laterMatInt) {

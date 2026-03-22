@@ -132,7 +132,7 @@ async function init() {
     ]);
 
     if (!yieldsRes.ok) throw new Error(`Failed to fetch yields: ${yieldsRes.status}`);
-    if (!refCpiRes.ok) throw new Error(`Failed to fetch RefCPI: ${refCpiRes.status}`);
+    if (!refCpiRes.ok) throw new Error(`Failed to fetch Ref CPI: ${refCpiRes.status}`);
 
     rawYieldsData = parseCsv(await yieldsRes.text());
     rawRefCpiData = parseCsv(await refCpiRes.text());
@@ -209,7 +209,7 @@ function processAndRender() {
     infoEl.textContent = `Broker Prices (T+1 Settlement)`;
   } else {
     priceSourceEl.style.display = 'none';
-    infoEl.textContent = `FedInvest Prices as of ${fedSettleStr}`;
+    infoEl.textContent = `FedInvest market data as of ${fedSettleStr}`;
   }
 
   // 1. Initial Processing

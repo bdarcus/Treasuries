@@ -30,8 +30,8 @@ test.beforeEach(async ({ page }) => {
 // ── 1. Data load ──────────────────────────────────────────────────────────────
 test('data loads: info-strip shows settlement date, run button enabled', async ({ page }) => {
   const strip = page.locator('#info-strip');
-  await expect(strip).toContainText('Prices as of');
-  await expect(strip).toContainText('RefCPI');
+  await expect(strip).toContainText('Market data as of');
+  await expect(strip).toContainText('Ref CPI');
   await expect(page.locator('#run-btn')).not.toBeDisabled();
 });
 

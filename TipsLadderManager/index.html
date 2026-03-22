@@ -120,7 +120,7 @@
     <p><b>DARA</b> — Desired Annual Real Amount. Your target annual amount in today's (inflation-adjusted) dollars. Each rung is sized to produce this amount.</p>
     <p><b>Gap Years</b> — Years with no issued TIPS (currently 2037–2039). The ladder holds excess bonds in <b>bracket</b> years flanking the gap to match the average duration of the missing maturities.</p>
     <p><b>Bracket Years</b> — <i>Upper bracket</i>: always the Feb 2040 TIPS. <i>Lower bracket</i>: for Build and 2-bracket Rebalance, the latest issued 10-year TIPS before the gap; for Rebalance, defaults to the TIPS before the gap with the largest existing holdings (original lower). In <i>3-bracket mode</i>, the original lower bracket excess is held as-is; a second lower bracket (the Jan TIPS just before the gap — "new lower") is bought to supplement. Excess bonds in bracket years duration-match the gap.</p>
-    <p><b>RefCPI</b> — Reference CPI value used for all inflation adjustments. Defaults to the settlement date. Click the RefCPI value in the info strip to override the reference date (useful for projecting with a future or past CPI). Changing it clears any auto-inferred DARA.</p>
+    <p><b>Ref CPI</b> — Reference CPI value used for all inflation adjustments. Defaults to the settlement date. Click the Ref CPI value in the info strip to override the reference date (useful for projecting with a future or past CPI). Changing it clears any auto-inferred DARA.</p>
 
     <h3 style="font-size:13px;margin:16px 0 6px;border-bottom:1px solid #eee;padding-bottom:4px;">Mode: Rebalance</h3>
     <p>For existing TIPS ladder holders. Sells excess bracket bonds and buys into newly available maturities (former gap years). Support for extending the ladder beyond 2040 is included.</p>
@@ -275,7 +275,7 @@
 </div>
 
 <script type="module">
-import { buildTipsMapFromYields, localDate, runRebalance, inferDARAFromCash } from './src/rebalance-lib.js';
+import { buildTipsMapFromYields, localDate, runRebalance, inferDARAFromCash, yieldFromPrice } from './src/rebalance-lib.js';
 import { runBuild } from './src/build-lib.js';
 import { renderTable } from './src/render.js';
 import { buildDrillHTML, buildDurationPopupRows } from './src/drill.js';
@@ -300,6 +300,7 @@ document.getElementById('help-overlay').addEventListener('click', e => {
 
 // ─── Load data CSVs ───────────────────────────────────────────────────────────
 let tipsMap = null, refCpiRows = null, settlementDate = null, tipsRefMap = null;
+let isBrokerImport = false;
 
 async function loadData() {
   const dataInfo = document.getElementById('info-strip');
@@ -355,7 +356,7 @@ async function loadData() {
         const _gapSuffix = _gaps.length
           ? ', none for ' + _gaps[0] + '–' + _gaps[_gaps.length - 1] + ' (gap years)'
           : '';
-        _staticInfoPrefix = 'Prices as of ' + settleDateStr;
+        _staticInfoPrefix = 'Market data as of ' + settleDateStr;
         _staticInfoSuffix = ' · <a class="info-link tips-ref-link">' + yieldsRows.length + ' TIPS</a>' + _gapSuffix;
         _staticInfo = _buildStaticInfo();
         dataInfo.innerHTML = '<div class="info-row">' + _staticInfo + '</div>';
@@ -813,8 +814,20 @@ document.getElementById('run-btn').addEventListener('click', async () => {
   setStatus('');
 
   try {
-    const settleDateStr = settlementDate.toLocaleDateString('en-CA');
+    const effectiveSettlementDate = (isBrokerImport && currentMode === 'rebalance')
+      ? new Date(settlementDate.getTime() + 86400000)
+      : settlementDate;
+    const settleDateStr = effectiveSettlementDate.toLocaleDateString('en-CA');
     const refCPI = lookupRefCpi(refCpiRows, activeRefCpiDateStr ?? settleDateStr);
+
+    let effectiveTipsMap = tipsMap;
+    if (effectiveSettlementDate.getTime() !== settlementDate.getTime()) {
+      effectiveTipsMap = new Map();
+      for (const [cusip, bond] of tipsMap.entries()) {
+        const newYield = yieldFromPrice(bond.price, bond.coupon, effectiveSettlementDate, bond.maturity);
+        effectiveTipsMap.set(cusip, { ...bond, yield: newYield });
+      }
+    }
 
     if (currentMode === 'build') {
       // ── Build from Scratch ──
@@ -833,7 +846,7 @@ document.getElementById('run-btn').addEventListener('click', async () => {
       const maturityPref = document.getElementById('build-maturity').value;
       const preLadderInterest = document.getElementById('pre-ladder-interest').checked;
       const daraByYear = getDaraByYear();
-      const result = runBuild({ dara, firstYear, lastYear, tipsMap, refCPI, settlementDate, maturityPref, preLadderInterest, daraByYear });
+      const result = runBuild({ dara, firstYear, lastYear, tipsMap: effectiveTipsMap, refCPI, settlementDate: effectiveSettlementDate, maturityPref, preLadderInterest, daraByYear });
       _lastKnownDara = dara;
       document.getElementById('dara-by-year').style.display = 'none';
       updateDaraInput();
@@ -863,7 +876,7 @@ document.getElementById('run-btn').addEventListener('click', async () => {
       let _daraWasInferred = false;
       if (method === 'Full' && dara === null) {
         setStatus('Inferring DARA from portfolio cash…');
-        ({ dara: finalDara, portfolioCash } = inferDARAFromCash({ bracketMode, holdings, tipsMap, refCPI, settlementDate, lastYearOverride }));
+        ({ dara: finalDara, portfolioCash } = inferDARAFromCash({ bracketMode, holdings, tipsMap: effectiveTipsMap, refCPI, settlementDate: effectiveSettlementDate, lastYearOverride }));
         finalDara = Math.floor(finalDara);
         document.getElementById('dara').value = String(finalDara);
         _daraByYearPanelDefault = finalDara;
@@ -875,7 +888,7 @@ document.getElementById('run-btn').addEventListener('click', async () => {
       setStatus('Running rebalance…');
       // When DARA was just inferred (exact value), skip per-year panel to avoid rounding mismatch
       const daraByYear = _daraWasInferred ? null : getDaraByYear();
-      const result = runRebalance({ dara: finalDara, method, bracketMode, holdings, tipsMap, refCPI, settlementDate, daraByYear, lastYearOverride });
+      const result = runRebalance({ dara: finalDara, method, bracketMode, holdings, tipsMap: effectiveTipsMap, refCPI, settlementDate: effectiveSettlementDate, daraByYear, lastYearOverride });
       document.getElementById('dara-by-year').style.display = 'none';
       updateDaraInput();
       renderOutput(result, portfolioCash);
@@ -946,6 +959,7 @@ document.getElementById('holdings-file').addEventListener('change', async (e) =>
                         (firstFewLines.includes('symbol') && firstFewLines.includes('quantity'));
 
     if (isBrokerCSV) {
+      isBrokerImport = true;
       const parsedAccounts = parseBrokerCSV(text, tipsMap);
       const acctNames = Object.keys(parsedAccounts);
       if (acctNames.length === 0) { setStatus('No TIPS found in broker export.', true); return; }
@@ -969,6 +983,7 @@ document.getElementById('holdings-file').addEventListener('change', async (e) =>
         document.getElementById('account-overlay').style.display = 'block';
       }
     } else {
+      isBrokerImport = false;
       const CUSIP_RE = /^[A-Z0-9]{9}$/i;
       const startIdx = CUSIP_RE.test(rawLines[0].split(',')[0].trim()) ? 0 : 1;
       const arr = [];
@@ -1164,15 +1179,19 @@ function _parseMDY(s) {
   return yyyy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
 }
 function _buildStaticInfo() {
-  const _date = activeRefCpiDateStr ?? (settlementDate ? settlementDate.toLocaleDateString('en-CA') : null);
+  const _effSettle = (isBrokerImport && currentMode === 'rebalance')
+    ? new Date(settlementDate.getTime() + 86400000)
+    : settlementDate;
+  const _date = activeRefCpiDateStr ?? (_effSettle ? _effSettle.toLocaleDateString('en-CA') : null);
   if (!_date || !refCpiRows) return _staticInfoPrefix + _staticInfoSuffix;
   let _val;
   try { _val = lookupRefCpi(refCpiRows, _date); } catch(e) { return _staticInfoPrefix + _staticInfoSuffix; }
   const _dateStyle = activeRefCpiDateStr ? ' style="color:#7c3aed"' : '';
+  const _settleNote = (isBrokerImport && currentMode === 'rebalance' && !activeRefCpiDateStr) ? ' <small>(T+1)</small>' : '';
   return _staticInfoPrefix
-    + ' · RefCPI ' + _val.toFixed(5)
+    + ' · Ref CPI ' + _val.toFixed(5)
     + ' as of <span id="refcpi-link" class="info-link" title="Click to change reference CPI date"' + _dateStyle + '>'
-    + _fmtMDY(_date) + '</span>'
+    + _fmtMDY(_date) + '</span>' + _settleNote
     + _staticInfoSuffix;
 }
 function _clearAutoDara() {
@@ -1429,7 +1448,7 @@ loadData();
       style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:13px;font-variant-numeric:tabular-nums;box-sizing:border-box;">
     <div id="refcpi-date-preview" style="margin-top:6px;font-size:12px;color:#555;min-height:16px;"></div>
     <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
-      <button id="refcpi-reset-btn" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:12px;padding:4px 10px;">Use price date</button>
+      <button id="refcpi-reset-btn" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:12px;padding:4px 10px;">Use settlement date</button>
       <button id="refcpi-apply-btn">Apply</button>
     </div>
   </div>
@@ -1448,7 +1467,7 @@ loadData();
         <thead>
           <tr>
             <th style="text-align:left">CUSIP</th>
-            <th>Base CPI</th>
+            <th>Ref CPI</th>
             <th style="text-align:left">Dated Date</th>
             <th style="text-align:left">Maturity</th>
             <th>Coupon</th>

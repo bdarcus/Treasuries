@@ -1,7 +1,8 @@
 // rebalance-lib.js -- Core logic for TIPS ladder rebalancing (4.0_TIPS_Ladder_Rebalancing.md)
 // Exports: buildTipsMapFromYields, runRebalance, localDate, inferDARAFromCash
 
-import { bondCalcs, calculateMDuration } from '../../shared/src/bond-math.js';
+import { bondCalcs, calculateMDuration, yieldFromPrice } from '../../shared/src/bond-math.js';
+export { yieldFromPrice };
 import { interpolateYield, syntheticCoupon } from './gap-math.js';
 
 export function localDate(str) {
