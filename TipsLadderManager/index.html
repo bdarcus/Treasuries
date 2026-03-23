@@ -196,9 +196,12 @@
     <div class="fields">
       <div class="field" id="field-holdings">
         <label>Holdings CSV</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input type="file" id="holdings-file" accept=".csv">
-          <span id="holdings-filename" style="font-size:11px;color:#64748b;font-style:italic"></span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" onclick="document.getElementById('holdings-file').click()" style="background:#64748b;padding:3px 10px;font-size:11px">Choose File</button>
+            <input type="file" id="holdings-file" accept=".csv" style="display:none">
+          </div>
+          <span id="holdings-filename" style="font-size:11px;color:#475569;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1"></span>
         </div>
       </div>
       <div class="field">
@@ -383,15 +386,19 @@ async function loadData() {
         let samplePath = './tests/CusipQtyTestLumpy.csv';
         let sampleRes = await fetch(samplePath);
         if (!sampleRes.ok) {
+          console.log('Primary sample path failed, trying fallback...');
           samplePath = 'tests/CusipQtyTestLumpy.csv';
           sampleRes = await fetch(samplePath);
         }
         if (sampleRes.ok) {
+          console.log('Sample CSV fetched successfully from:', samplePath);
           const blob = await sampleRes.blob();
           const file = new File([blob], 'CusipQtyTestLumpy.csv', { type: 'text/csv' });
           const dt = new DataTransfer();
           dt.items.add(file);
           fileInput.files = dt.files;
+          const nameSpan = document.getElementById('holdings-filename');
+          if (nameSpan) nameSpan.textContent = file.name;
           fileInput.dispatchEvent(new Event('change'));
           
           // Auto-run once data is settled
