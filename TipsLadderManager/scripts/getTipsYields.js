@@ -73,7 +73,7 @@ async function fetchTipsPrices() {
   } else {
     throw new Error('Could not parse settlement date from FedInvest response');
   }
-  const settleDateStr = new Date(+y, months[mon], +d).toLocaleDateString('en-CA');
+  const settleDateStr = `${y}-${String(months[mon] + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
   const rows = text.trim().split('\n')
     .filter(l => /^[A-Z0-9]{9},/.test(l))   // CUSIP data rows only
