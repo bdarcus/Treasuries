@@ -1,6 +1,8 @@
 name: Get TIPS Yields
 
 on:
+  push:
+    branches: [ main ]
   schedule:
     - cron: '0 17 * * 1-5'   # 1:00 PM EDT (UTC-4) / 12:00 PM EST (UTC-5)
   workflow_dispatch:
