@@ -141,10 +141,9 @@ async function snap() {
     const newPoints = liveData.filter(p => p.x > lastHistTime);
     
     if (newPoints.length > 0) {
-      // Append only the latest point from the live pull to represent today's close
-      const lastLivePoint = newPoints[newPoints.length - 1];
-      history.push(lastLivePoint);
-      console.log(`  Appended new close: ${lastLivePoint.x} (${lastLivePoint.y}%)`);
+      // Merge all new points found in the live pull
+      history = mergePoints(history, newPoints);
+      console.log(`  Appended ${newPoints.length} new points for ${sym}.`);
       
       await uploadToR2(r2Key, history);
       fs.writeFileSync(path.join(DATA_DIR, `${sym}_history.json`), JSON.stringify(history, null, 2));

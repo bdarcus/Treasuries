@@ -341,7 +341,6 @@ async function fetchOne(symbol, range) {
     if (live && live.length > 0) {
       if (range === '2D' || range === '10D') liveCache[symbol] = live; // Update tip cache
       
-      // Filter live data to requested range for display
       const cutoff = new Date();
       if (range === '2D') cutoff.setDate(cutoff.getDate() - 2);
       else if (range === '10D') cutoff.setDate(cutoff.getDate() - 10);
@@ -356,17 +355,17 @@ async function fetchOne(symbol, range) {
     // Reuse live tip if available, else fetch once
     let liveTip = liveCache[symbol];
     if (!liveTip) {
-      console.log(`%c[CNBC] %cFetching 5D tip for ${symbol}...`, "color: #2563eb; font-weight: bold", "color: inherit");
-      liveTip = await fetchLive(symbol, '2D'); // '2D' range in UI uses '5D' provider range
-      liveCache[symbol] = liveTip;
+      console.log(`%c[CNBC] %cFetching tip for ${symbol}...`, "color: #2563eb; font-weight: bold", "color: inherit");
+      liveTip = await fetchLive(symbol, '2D'); 
+      if (liveTip) liveCache[symbol] = liveTip;
     }
 
-    if (!history) return liveTip;
-    if (!liveTip) return history;
-
-    const lastHistTime = history[history.length - 1].x.getTime();
-    const newPoints = liveTip.filter(p => p.x.getTime() > lastHistTime);
-    const combined = [...history, ...newPoints];
+    let combined = history || [];
+    if (liveTip && liveTip.length > 0) {
+      const lastHistTime = combined.length > 0 ? combined[combined.length - 1].x.getTime() : 0;
+      const newPoints = liveTip.filter(p => p.x.getTime() > lastHistTime);
+      combined = [...combined, ...newPoints];
+    }
 
     if (range === 'ALL') return combined;
     const cutoff = new Date();
@@ -493,6 +492,7 @@ async function updateAllData() {
 
       if (chart) {
         chart.data.datasets[0].data = data;
+        chart.options.scales.x.time.unit = isIntraday ? 'hour' : 'day';
         chart.options.scales.x.time.tooltipFormat = isIntraday ? 'MM/dd/yy HH:mm:ss' : 'MM/dd/yy';
         chart.options.scales.x.time.displayFormats = isIntraday
           ? { hour: 'MM/dd HH:mm', minute: 'HH:mm:ss', day: 'MMM dd' }
