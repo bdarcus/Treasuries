@@ -73,6 +73,7 @@ export const COLS = [
   { label: 'Quantity After',     headerHTML: 'Quantity<br>After', key: 'qtyAfter',   fmt: 'qty', rebalOnly: true,
     value:    d => d.fundedYearQtyAfter,
     subValue: d => d.excessQtyAfter,
+    subDrillKey: 'qtyAfter',
     total: true, totalFn: d => d.qtyAfter || 0,
     drill: true, drillCond: (_v, d) => (d.qtyAfter || 0) > 0 },
 

@@ -51,7 +51,7 @@ function gapBreakdownRows(gapParams, dara) {
     const fmla = '(DARA \u2212 <span class="formula-var" data-source="' + id + 'lmi">LMI</span>) \u00f7 <span class="formula-var" data-source="' + id + 'pi">P+I</span>';
     rows += row(g.year + ' quantity', fmla, g.qty, false, undefined, id + 'qty')
           + row('\u21b3 P+I per synthetic', '', fm2(g.piPerBond), false, undefined, id + 'pi')
-          + row('\u21b3 Later mat int (LMI)', '', fm(g.laterMatInt), false, undefined, id + 'lmi');
+          + row('\u21b3 Later mat int (Real)', 'Total real coupon interest from future rungs', fm(g.laterMatInt), false, undefined, id + 'lmi');
   });
   return rows;
 }

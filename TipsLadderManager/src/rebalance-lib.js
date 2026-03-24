@@ -320,21 +320,18 @@ export function runRebalance({ dara, method, bracketMode = '2bracket', holdings:
     for (const y in araLaterMaturityInterestByYear) {
       if (parseInt(y) > year) laterMatInt += araLaterMaturityInterestByYear[y];
     }
-    let yearPrincipal = 0, yearLastYearInterest = 0;
+    let yearPrincipalReal = 0, yearLastYearInterestReal = 0;
     araLaterMaturityInterestByYear[year] = 0;
     for (const holding of yearInfo[year].holdings) {
       const b = tipsMap.get(holding.cusip);
       const cp = b?.coupon ?? 0;
-      const bc = b?.baseCpi ?? refCPI;
-      const ir = refCPI / bc;
-      const ap = 1000 * ir;
       const mF = holding.maturity.getMonth() + 1;
-      const lastYI = mF < 7 ? (ap * cp * 0.5) : (ap * cp * 1.0);
-      yearPrincipal += holding.qty * ap;
-      yearLastYearInterest += holding.qty * lastYI;
-      araLaterMaturityInterestByYear[year] += holding.qty * ap * cp;
+      const lastYIReal = mF < 7 ? (1000 * cp * 0.5) : (1000 * cp * 1.0);
+      yearPrincipalReal += holding.qty * 1000;
+      yearLastYearInterestReal += holding.qty * lastYIReal;
+      araLaterMaturityInterestByYear[year] += holding.qty * 1000 * cp;
     }
-    araByYear[year] = yearPrincipal + yearLastYearInterest + laterMatInt;
+    araByYear[year] = yearPrincipalReal + yearLastYearInterestReal + laterMatInt;
   }
 
   for (const gapYear of gapYears) {

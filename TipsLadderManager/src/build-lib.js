@@ -38,7 +38,7 @@ function calcGapParams(gapYears, tipsMap, settlementDate, refCPI, dara, prelim) 
     // Sum annual interest from all non-gap bonds with maturity year > this gap year
     let laterMatInt = 0;
     for (const [y, p] of Object.entries(prelim)) {
-      if (parseInt(y) > year) laterMatInt += p.annualInterest;
+      if (parseInt(y) > year) laterMatInt += p.annualInterestReal;
     }
 
     const piPerBond = 1000 + 1000 * synCpn * 0.5;
@@ -106,7 +106,7 @@ export function runBuild({ dara, firstYear: firstYearOpt, lastYear, tipsMap, ref
   // 2. Identify brackets (only needed when there are gap years)
   let lowerYear = null, upperYear = null;
 
-  // 3. Preliminary sweep (longest → shortest, no bracket excess)
+  // 3. Preliminary sweep (longest \u2192 shortest, no bracket excess)
   //    Accumulates rebuildLaterMatInt the same way as Phase 4 of the rebalancer.
   const prelim = {};
   let laterMatInt = 0;
@@ -115,9 +115,9 @@ export function runBuild({ dara, firstYear: firstYearOpt, lastYear, tipsMap, ref
     const pi   = bondCalcs(bond, refCPI).piPerBond;
     const qty  = _fyQty(daraByYear?.get(year) ?? dara, laterMatInt, pi);
     // Real interest = qty * 1000 * coupon (consistent with DARA)
-    const ann  = qty * 1000 * (bond.coupon ?? 0);
-    prelim[year] = { targetFundedYearQty: qty, annualInterest: ann, laterMatInt, pi };
-    laterMatInt += ann;
+    const annReal = qty * 1000 * (bond.coupon ?? 0);
+    prelim[year] = { targetFundedYearQty: qty, annualInterestReal: annReal, laterMatInt, pi };
+    laterMatInt += annReal;
   }
 
   // 3a. Validate: every funded year must have qty >= 1 (DARA too low if laterMatInt < dara but gap < piPerBond/2)
@@ -139,8 +139,8 @@ export function runBuild({ dara, firstYear: firstYearOpt, lastYear, tipsMap, ref
   let partialCreditYear = null, partialCredit = 0;
 
   if (preLadderYears > 0) {
-    const totalAnnualInt = Object.values(prelim).reduce((s, p) => s + p.annualInterest, 0);
-    preLadderPool = preLadderYears * totalAnnualInt;
+    const totalAnnualIntReal = Object.values(prelim).reduce((s, p) => s + p.annualInterestReal, 0);
+    preLadderPool = preLadderYears * totalAnnualIntReal;
 
     let remaining = preLadderPool;
     for (const year of [...rangeYears].sort((a, b) => a - b)) {  // short → long
