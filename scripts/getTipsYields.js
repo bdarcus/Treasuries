@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-const _envPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env');
+const _envPath = resolve(dirname(fileURLToPath(import.meta.url)), '../.env');
 if (existsSync(_envPath)) {
   readFileSync(_envPath, 'utf8').split('\n').forEach(line => {
     const m = line.match(/^\s*([^#\s][^=]*?)\s*=\s*(.*?)\s*$/);
