@@ -1,14 +1,14 @@
 # Treasury Investors Portal
 
-A collection of free, open-source tools for the **Bogleheads** community to manage and analyze TIPS (Treasury Inflation-Protected Securities).
+A collection of free, open-source tools for the **Bogleheads** community to manage and analyze Treasury securities, with a specialized focus on TIPS (Treasury Inflation-Protected Securities).
 
 [**Read our Project Vision**](./PROJECT_VISION.md)
 
 ## Projects
 - **TipsLadderManager**: Browser-based TIPS ladder design and rebalancing.
-- **Yields**: Seasonally Adjusted TIPS yield analysis and trend fitting.
-- **YieldsMonitor**: Treasury yield monitoring and curve tracking.
-- **TreasuryAuctions**: Treasury auction data display.
+- **Yields**: Seasonal Adjustment (SA) analysis for TIPS and Nominal Treasury yield curves.
+- **YieldsMonitor**: Real-time and historical Treasury yield monitoring across the curve.
+- **TreasuryAuctions**: Comprehensive Treasury auction results and filtering.
 
 ## Shared Infrastructure
 - **shared/**: Common libraries and knowledge base used across projects.
