@@ -26,6 +26,7 @@ let nominalsShowStrips = false;
 let chart = null;
 let chartTab = null;
 const savedZoom = { tips: null, treasuries: null };
+const savedDateRange = { tips: null, treasuries: null };
 
 // CUSIP 6-char prefixes that identify STRIPS instruments
 const STRIPS_PREFIXES = new Set(['912803','912820','912821','912833','912834']);
@@ -486,11 +487,19 @@ function processAndRender() {
 }
 
 function switchTab(tab) {
+  // Save date range for the tab we're leaving
+  savedDateRange[activeTab] = {
+    start: document.getElementById('startMaturity').value,
+    end: document.getElementById('endMaturity').value,
+    startCal: document.getElementById('startMaturityCal').value,
+    endCal: document.getElementById('endMaturityCal').value,
+  };
+
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
-  
+
   // Show/Hide Source UI groups
   document.getElementById('tipsSourceUI').style.display = tab === 'tips' ? 'flex' : 'none';
   document.getElementById('treasuriesSourceUI').style.display = tab === 'treasuries' ? 'flex' : 'none';
@@ -498,17 +507,18 @@ function switchTab(tab) {
   // Table visibility
   document.getElementById('saTable').style.display = tab === 'tips' ? '' : 'none';
   document.getElementById('nominalsTable').style.display = tab === 'treasuries' ? '' : 'none';
-  
+
   // Controls visibility
   document.getElementById('tipsControls').style.display = tab === 'tips' ? 'flex' : 'none';
   document.getElementById('nominalsControls').style.display = tab === 'treasuries' ? 'flex' : 'none';
-  
-  // Reset date range logic (optional, but keep consistent with previous behavior)
-  document.getElementById('startMaturity').value = '';
-  document.getElementById('endMaturity').value = '';
-  document.getElementById('startMaturityCal').value = '';
-  document.getElementById('endMaturityCal').value = '';
-  
+
+  // Restore date range for the tab we're switching to (clear if never set so render can auto-populate)
+  const dr = savedDateRange[tab];
+  document.getElementById('startMaturity').value = dr ? dr.start : '';
+  document.getElementById('endMaturity').value = dr ? dr.end : '';
+  document.getElementById('startMaturityCal').value = dr ? dr.startCal : '';
+  document.getElementById('endMaturityCal').value = dr ? dr.endCal : '';
+
   processAndRender();
 }
 
