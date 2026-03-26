@@ -378,10 +378,11 @@ function parseSourceTime(tt) {
 
 function getEtDateStr(date) {
   // Returns "MM/DD/YYYY" for the ET wall-clock date of the given UTC instant.
-  return date.toLocaleDateString('en-US', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
     year: 'numeric', month: '2-digit', day: '2-digit'
-  });
+  }).formatToParts(date).reduce((a, pt) => ({ ...a, [pt.type]: pt.value }), {});
+  return `${parts.month}/${parts.day}/${parts.year}`;
 }
 
 function makeEtMoment(year, month0, day, hour) {
@@ -628,19 +629,27 @@ async function updateAllData() {
         chart.resetZoom();
       }
 
-      // Calculate change since close
+      // Calculate change since close (ET-aware)
       const latestPoint = data[data.length - 1];
       let closePoint = null;
-      const latestDay = latestPoint.x.toDateString();
+      const latestDayET = getEtDateStr(latestPoint.x);
       const fullData = (isIntraday && liveCache[sym]) ? liveCache[sym] : data;
       
+      const etFmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York', hourCycle: 'h23',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: 'numeric', minute: 'numeric'
+      });
+
       for (let i = fullData.length - 1; i >= 0; i--) {
         const p = fullData[i];
-        const phour = p.x.getHours();
-        const pmin = p.x.getMinutes();
-        const pday = p.x.toDateString();
-        if (pday !== latestDay) {
-          if (phour < 17 || (phour === 17 && pmin <= 5)) {
+        const parts = etFmt.formatToParts(p.x).reduce((a, pt) => ({ ...a, [pt.type]: pt.value }), {});
+        const pDayET = `${parts.month}/${parts.day}/${parts.year}`;
+
+        if (pDayET !== latestDayET) {
+          const ph = parseInt(parts.hour, 10);
+          const pm = parseInt(parts.minute, 10);
+          if (ph < 17 || (ph === 17 && pm <= 5)) {
             closePoint = p;
             break;
           }
@@ -658,7 +667,9 @@ async function updateAllData() {
           const sign = diff >= 0 ? '+' : '';
           changeEl.textContent = `${sign}${diff.toFixed(3)}%`;
           changeEl.className = `sym-change ${diff >= 0 ? 'up' : 'down'}`;
-          changeEl.title = `Since ${closePoint.x.toLocaleString()} close (${closePoint.y.toFixed(3)}%)`;
+          
+          const closeEtStr = etFmt.format(closePoint.x);
+          changeEl.title = `Since ${closeEtStr} ET close (${closePoint.y.toFixed(3)}%)`;
         } else {
           changeEl.textContent = '---';
         }
@@ -693,7 +704,7 @@ async function updateAllData() {
   
   let statusHtml = `<div>Fetch: ${fetchPT} / ${fetchET}</div>`;
   if (latestDataTime) {
-    const isToday = latestDataTime.toDateString() === now.toDateString();
+    const isToday = getEtDateStr(latestDataTime) === getEtDateStr(now);
     const dataPT = formatTZ(latestDataTime, 'America/Los_Angeles', 'PT', !isToday);
     const dataET = formatTZ(latestDataTime, 'America/New_York', 'ET', !isToday);
     statusHtml += `<div style="margin-top:2px; color:#0f172a">Data: ${dataPT} / ${dataET} (${successCount}/${allSymbols.length} syms)</div>`;
