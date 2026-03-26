@@ -755,6 +755,7 @@ function renderNominalsChart(fedBonds, fidBonds) {
   const dataRange = maxY - minY;
   const step = dataRange <= 0.5 ? 0.05 : dataRange <= 1.0 ? 0.1 : 0.25;
 
+  const zoomToRestore = savedZoom['treasuries'];
   if (chart && chartTab) savedZoom[chartTab] = {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max
@@ -818,12 +819,11 @@ function renderNominalsChart(fedBonds, fidBonds) {
     }
   });
 
-  const z = savedZoom['treasuries'];
-  if (z) {
-    chart.options.scales.x.min = z.xMin;
-    chart.options.scales.x.max = z.xMax;
-    chart.options.scales.y.min = z.yMin;
-    chart.options.scales.y.max = z.yMax;
+  if (zoomToRestore) {
+    chart.options.scales.x.min = zoomToRestore.xMin;
+    chart.options.scales.x.max = zoomToRestore.xMax;
+    chart.options.scales.y.min = zoomToRestore.yMin;
+    chart.options.scales.y.max = zoomToRestore.yMax;
     chart.update('none');
   }
 
@@ -1034,6 +1034,7 @@ function renderChart(fedBonds, brokerBonds) {
   const minY = Math.floor(Math.min(...allY) * 4) / 4;
   const maxY = Math.ceil(Math.max(...allY) * 4) / 4;
 
+  const zoomToRestore = savedZoom['tips'];
   if (chart && chartTab) savedZoom[chartTab] = {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max
@@ -1083,12 +1084,11 @@ function renderChart(fedBonds, brokerBonds) {
     }
   });
 
-  const z = savedZoom['tips'];
-  if (z) {
-    chart.options.scales.x.min = z.xMin;
-    chart.options.scales.x.max = z.xMax;
-    chart.options.scales.y.min = z.yMin;
-    chart.options.scales.y.max = z.yMax;
+  if (zoomToRestore) {
+    chart.options.scales.x.min = zoomToRestore.xMin;
+    chart.options.scales.x.max = zoomToRestore.xMax;
+    chart.options.scales.y.min = zoomToRestore.yMin;
+    chart.options.scales.y.max = zoomToRestore.yMax;
     chart.update('none');
   }
 
@@ -1248,6 +1248,7 @@ document.getElementById('nominalsTable').querySelector('thead').addEventListener
 document.getElementById('nominalsControls').addEventListener('change', (e) => {
   if (e.target.id === 'filterStrips') {
     nominalsShowStrips = e.target.checked;
+    savedZoom['treasuries'] = null;
     processAndRenderNominals();
     return;
   }
@@ -1255,6 +1256,7 @@ document.getElementById('nominalsControls').addEventListener('change', (e) => {
   if (!type) return;
   if (e.target.checked) nominalsTypeFilters.add(type);
   else nominalsTypeFilters.delete(type);
+  savedZoom['treasuries'] = null;
   processAndRenderNominals();
 });
 
