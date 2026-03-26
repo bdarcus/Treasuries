@@ -24,6 +24,7 @@ let fidelityNominalsData = null;  // processed bond objects from Fidelity CSV
 let fidelityNominalsDate = null;  // download date string extracted from CSV footer
 let nominalsShowStrips = false;
 let chart = null;
+let chartTab = null;
 
 // CUSIP 6-char prefixes that identify STRIPS instruments
 const STRIPS_PREFIXES = new Set(['912803','912820','912821','912833','912834']);
@@ -743,11 +744,12 @@ function renderNominalsChart(fedBonds, fidBonds) {
   const dataRange = maxY - minY;
   const step = dataRange <= 0.5 ? 0.05 : dataRange <= 1.0 ? 0.1 : 0.25;
 
-  const prevZoom = chart ? {
+  const prevZoom = (chart && chartTab === 'treasuries') ? {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max
   } : null;
   if (chart) chart.destroy();
+  chartTab = 'treasuries';
   chart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -1019,11 +1021,12 @@ function renderChart(fedBonds, brokerBonds) {
   const minY = Math.floor(Math.min(...allY) * 4) / 4;
   const maxY = Math.ceil(Math.max(...allY) * 4) / 4;
 
-  const prevZoom = chart ? {
+  const prevZoom = (chart && chartTab === 'tips') ? {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max
   } : null;
   if (chart) chart.destroy();
+  chartTab = 'tips';
   chart = new Chart(ctx, {
     type: 'line',
     data: {
