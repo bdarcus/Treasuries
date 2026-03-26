@@ -1123,19 +1123,27 @@ function renderChart(fedBonds, brokerBonds) {
 }
 
 function rescaleToVisible(chart) {
-  let visibleMinY = Infinity;
-  let visibleMaxY = -Infinity;
+  let allVisibleY = [];
 
   chart.data.datasets.forEach((dataset, i) => {
     if (!chart.isDatasetVisible(i)) return;
-    dataset.data.forEach(p => {
-      if (p.y < visibleMinY) visibleMinY = p.y;
-      if (p.y > visibleMaxY) visibleMaxY = p.y;
-    });
+    dataset.data.forEach(p => allVisibleY.push(p.y));
   });
 
-  if (visibleMinY === Infinity) return;
+  if (allVisibleY.length === 0) return;
 
+  if (nominalsClipOutliers && chartTab === 'treasuries' && allVisibleY.length >= 4) {
+    const sorted = [...allVisibleY].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
+    const lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
+    const clipped = allVisibleY.filter(y => y >= lo && y <= hi);
+    if (clipped.length > 0) allVisibleY = clipped;
+  }
+
+  const visibleMinY = Math.min(...allVisibleY);
+  const visibleMaxY = Math.max(...allVisibleY);
   const range = visibleMaxY - visibleMinY;
   let newStep = 0.25;
   if (range > 3) newStep = 0.50;
