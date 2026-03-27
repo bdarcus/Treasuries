@@ -9,10 +9,10 @@ A browser-based tool for analyzing **Seasonally Adjusted (SA)** and **SA Outlier
 - **SAO Trend Fitting**: See the institutional view of the yield curve via backwards-anchored linear regression.
 
 ## Getting Started
-- **Live Version**: [https://aerokam.github.io/Treasuries/YieldCurves/](https://aerokam.github.io/Treasuries/YieldCurves/)
-- **Local Dev**:
-  1. From the monorepo root: `npx serve .`
-  2. Open `http://localhost:8080/YieldCurves/` in your browser. (Note: Root serving is required for shared components).
+To get started, visit the [Treasury Investors Portal](https://aerokam.github.io/Treasuries/) and select the **YieldCurves** tool, or go directly to the [YieldCurves URL](https://aerokam.github.io/Treasuries/YieldCurves/).
+
+## Local Development
+For local development, execute `npx serve .` from the root directory of the `Treasuries` repository and navigate to `http://localhost:8080/YieldCurves/`. (Note: Root serving is required for shared components).
 
 ## Knowledge Base
 - **[1.0 Seasonal Adjustments](./knowledge/1.0_Seasonal_Adjustments.md)**: The core multiplicative transform logic.

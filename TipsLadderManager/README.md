@@ -2,8 +2,6 @@
 
 A free, browser-based tool for building and rebalancing [TIPS](https://www.treasurydirect.gov/marketable-securities/tips/) (Treasury Inflation-Protected Securities) ladders.
 
-**Live app:** https://aerokam.github.io/Treasuries/TipsLadderManager/
-
 All calculations run locally in your browser — no data is uploaded anywhere.
 
 ---
@@ -63,12 +61,12 @@ This project is built on **spec-first development**. All logic and formulas are 
 
 ---
 
-## Running Locally
+## Getting Started
 
-No build step required — open `TipsLadderManager/index.html` in a browser, or serve the project root with any static file server:
+To get started, visit the [Treasury Investors Portal](https://aerokam.github.io/Treasuries/) and select the **TipsLadderManager** tool, or go directly to the [TipsLadderManager URL](https://aerokam.github.io/Treasuries/TipsLadderManager/).
 
-```bash
-npx serve .
-```
+---
 
-Then navigate to `http://localhost:8080/TipsLadderManager/` (default port 8080).
+## Local Development
+
+For local development, execute `npx serve .` from the root directory of the `Treasuries` repository and navigate to `http://localhost:8080/TipsLadderManager/`. (Note: Root serving is required for shared components).

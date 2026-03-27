@@ -14,8 +14,8 @@ A collection of free, open-source tools for the **Bogleheads** community to mana
 - **shared/**: Common libraries and knowledge base used across projects.
 - **scripts/**: Root-level data-fetch scripts shared across projects.
 
-## Web Interface
-- **Live Version**: [https://aerokam.github.io/Treasuries/](https://aerokam.github.io/Treasuries/)
+## Getting Started
+To get started, visit the [Treasury Investors Portal](https://aerokam.github.io/Treasuries/).
 
 ## Local Development
 To run the tools locally:
