@@ -1,6 +1,6 @@
 // bond-math.js — Core financial math for TIPS and nominal Treasuries.
 // Pure per-unit calculations ($1,000 face value).
-// Spec: knowledge/2.1_TIPS_Basics.md, knowledge/5.0_Computation_Modules.md §bond-math.js
+// Spec: ../knowledge/TIPS_Basics.md, knowledge/4.0_Computation_Modules.md §bond-math.js
 
 // ─── Modified duration ────────────────────────────────────────────────────────
 // Spec: 5.0 §calculateMDuration

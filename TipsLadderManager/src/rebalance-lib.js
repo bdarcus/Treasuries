@@ -1,4 +1,4 @@
-// rebalance-lib.js -- Core logic for TIPS ladder rebalancing (4.0_TIPS_Ladder_Rebalancing.md)
+// rebalance-lib.js -- Core logic for TIPS ladder rebalancing (3.0_TIPS_Ladder_Rebalancing.md)
 // Exports: buildTipsMapFromYields, runRebalance, localDate, inferDARAFromCash
 
 import { bondCalcs, calculateMDuration, yieldFromPrice } from '../../shared/src/bond-math.js';

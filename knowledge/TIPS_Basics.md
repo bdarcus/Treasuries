@@ -1,0 +1,112 @@
+# 2.1 TIPS Basics
+
+## Dependencies
+**Requires:** 1.0 Bond Basics
+
+**Inherits all terms from 1.0:**
+- Face Value (unadjusted baseline), Coupon Rate, Maturity Date, Settlement
+- Semi-Annual Payment, Annual Interest per TIPS, Price
+- Last-Year Interest Payments (general principle)
+
+---
+
+## TIPS-Specific Terms
+
+**TIPS (Treasury Inflation-Protected Securities):** Marketable Treasury securities whose principal is adjusted by changes in the Consumer Price Index.
+
+- **[Quantity](./DATA_DICTIONARY.md#quantity):** Number of TIPS held; qty 1 = $1,000 face value (e.g., qty 50 = $50,000 face value).
+- **[Face Value](./DATA_DICTIONARY.md#face-value):** Quantity × $1,000 (e.g., $50,000).
+- **[Par Value (Adjusted Principal)](./DATA_DICTIONARY.md#par-value-adjusted):** The principal value after being adjusted for inflation/deflation.
+  - `Par Value = Face Value × Index Ratio`
+  - This is the value used to calculate interest payments and the redemption amount at maturity.
+
+**CPI-U (NSA):** Consumer Price Index for All Urban Consumers, Non-Seasonally Adjusted.
+- Published monthly by Bureau of Labor Statistics.
+- Released mid-month for prior month data.
+
+- **[Reference CPI](./DATA_DICTIONARY.md#ref-cpi):** Daily interpolated value used for TIPS calculations.
+  - **Legal Authority:** 31 CFR § 356 Appendix B, Section I, Paragraph B.
+  - **Principle:** The Reference CPI for the first day of any month is the CPI-U (NSA) for the third month preceding that month.
+
+```
+For the 1st of the month:
+  Ref CPI(month, 1) = CPI-U(month - 3)
+  Example: Ref CPI for April 1st uses the CPI-U for January.
+
+For days 2-31:
+  Ref CPI(month, day) = Ref CPI(month, 1) + 
+                       (Ref CPI(month+1, 1) - Ref CPI(month, 1)) * 
+                       (day - 1) / daysInMonth
+```
+
+**Dated Date:** 15th of the month in which TIPS was issued.
+
+**Ref CPI on Dated Date:** Reference CPI on the dated date (constant for bond lifetime).
+
+- **[Index Ratio](./DATA_DICTIONARY.md#index-ratio):**
+```
+indexRatio(date) = refCPI(date) / refCPI(datedDate)
+```
+
+---
+
+## Inflation-Adjusted Calculations
+
+**Par Value (Adjusted Principal):**
+```
+parValue = faceValue * indexRatio
+```
+
+**Inflation-Adjusted Annual Interest (per TIPS):**
+```
+adjustedAnnualInterest = Par Value * couponRate
+```
+
+**Inflation-Adjusted Semi-Annual Interest:**
+```
+adjustedSemiAnnualInterest = adjustedAnnualInterest / 2
+```
+
+---
+
+## TIPS-Specific Rules
+
+**TIPS Maturity Dates:** Always 15th of month (Jan, Feb, Apr, Jul, Oct).
+
+**Last-Year Interest (TIPS):**
+- Jan-Jun maturity: 1 payment in final year
+- Jul-Dec maturity: 2 payments in final year
+```
+For Jan maturity (month 1 < 7):
+  lastYearInterest = adjustedAnnualInterest * 0.5
+
+For Jul maturity (month 7 \u2265 7):
+  lastYearInterest = adjustedAnnualInterest * 1.0
+```
+
+**[P+I per TIPS](./DATA_DICTIONARY.md#pi-per-tips):**
+The total inflation-adjusted cash flow (Par Value + Last-Year Interest) received in the year the security matures.
+```
+piPerBond = Par Value + lastYearInterest
+```
+
+**[Cost per TIPS](./DATA_DICTIONARY.md#cost-per-tips):**
+The nominal cost to purchase one $1,000 Face Value unit.
+```
+costPerBond = price/100 × indexRatio × 1,000
+```
+
+---
+
+## Yield Calculation Conventions
+
+TIPS yield-to-maturity (YTM) follows the standard U.S. Treasury convention for notes and bonds:
+
+- **Standard ( > 6 months to maturity)**: Semi-annual compounding (Actual/Actual day count). Matches Excel's `YIELD` function with `frequency=2` and `basis=1`.
+- **Short-dated ( ≤ 6 months to maturity)**: Simple annual discounting (single-period). This occurs when the security is within its final coupon period.
+  - **Rule**: If the time from settlement to maturity is less than one semi-annual period (approximately 182.5 days), use the single-period formula.
+  - **Formula**:
+    \[ Price_{dirty} = \frac{FaceValue + Coupon_{semi}}{1 + Yield \times \frac{DaysToMaturity}{DaysInYear}} \]
+    where $DaysInYear$ is 365 (or 366 if a leap day is involved).
+
+This dual-mode calculation ensures that the application's yield curve aligns with official Treasury (FedInvest) and institutional broker data.

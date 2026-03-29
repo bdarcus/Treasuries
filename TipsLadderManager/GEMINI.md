@@ -32,7 +32,7 @@ TipsLadderManager is a browser-based, privacy-first tool for designing and rebal
 ## Development Conventions
 
 ### 1. Spec-First Implementation
-Always refer to the `knowledge/` directory (specifically `4.0_TIPS_Ladder_Rebalancing.md`) before modifying core logic. Code must implement the spec; the spec is never inferred from the code.
+Always refer to the `knowledge/` directory (specifically `3.0_TIPS_Ladder_Rebalancing.md`) before modifying core logic. Code must implement the spec; the spec is never inferred from the code.
 
 ### 2. Documentation Parity (New Rule)
 Whenever core logic, UI fields, or default behaviors are changed:

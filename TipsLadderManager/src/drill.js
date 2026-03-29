@@ -1,4 +1,4 @@
-// drill.js -- Drill-down popup HTML builder (6.0_UI_Schema.md)
+// drill.js -- Drill-down popup HTML builder (5.0_UI_Schema.md)
 // Exports: buildDrillHTML(d, colKey, summary)
 
 function fm(n)  { return '$' + Math.round(n).toLocaleString('en-US'); }

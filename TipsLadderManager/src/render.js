@@ -1,4 +1,4 @@
-// render.js -- Table rendering driven by COLS schema (6.0_UI_Schema.md)
+// render.js -- Table rendering driven by COLS schema (5.0_UI_Schema.md)
 // Exports: COLS, renderTable
 
 function esc(s) {
@@ -23,7 +23,7 @@ function fmtCls(v, fmt) {
 
 function pi(d) { return d.principalPerBond * (1 + d.coupon / 2 * (d.nPeriods || 2)); }
 
-// COLS schema -- single source for all table rendering (6.0_UI_Schema.md)
+// COLS schema -- single source for all table rendering (5.0_UI_Schema.md)
 export const COLS = [
   // Shared (both modes)
   { label: 'CUSIP',       key: 'cusip',       fmt: 'str',

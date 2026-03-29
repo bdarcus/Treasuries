@@ -1,6 +1,6 @@
 // gap-math.js — Gap year analysis, bracket sizing, and ladder sweep helpers
-// Spec: knowledge/5.0_Computation_Modules.md §gap-math.js
-// Math reference: knowledge/4.0_TIPS_Ladder_Rebalancing.md Phase 2, Phase 3, Phase 4
+// Spec: knowledge/4.0_Computation_Modules.md §gap-math.js
+// Math reference: knowledge/3.0_TIPS_Ladder_Rebalancing.md Phase 2, Phase 3, Phase 4
 
 import { calculateMDuration } from '../../shared/src/bond-math.js';
 

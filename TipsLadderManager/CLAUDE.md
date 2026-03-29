@@ -41,10 +41,10 @@ npx serve .
 
 | Doc | Governs |
 |-----|---------|
-| `knowledge/4.0_TIPS_Ladder_Rebalancing.md` | Core rebalance algorithm, all named quantities, formulas, variable mapping |
-| `knowledge/5.0_Computation_Modules.md` | Module APIs (bond-math, gap-math, ladder-math) |
-| `knowledge/6.0_UI_Schema.md` | COLS schema, table structure, drill popup routing |
-| `knowledge/2.1_TIPS_Basics.md` | costPerBond, piPerBond, indexRatio, adjustedPrincipal |
+| `knowledge/3.0_TIPS_Ladder_Rebalancing.md` | Core rebalance algorithm, all named quantities, formulas, variable mapping |
+| `knowledge/4.0_Computation_Modules.md` | Module APIs (bond-math, gap-math, ladder-math) |
+| `knowledge/5.0_UI_Schema.md` | COLS schema, table structure, drill popup routing |
+| `../knowledge/TIPS_Basics.md` | costPerBond, piPerBond, indexRatio, adjustedPrincipal |
 
 **Documentation Parity**: Whenever core logic, UI fields, or default behaviors are changed:
 - `README.md` must be updated to reflect new capabilities.

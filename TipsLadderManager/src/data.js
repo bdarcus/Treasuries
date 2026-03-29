@@ -1,4 +1,4 @@
-// data.js -- CSV fetch and parse (5.0_Computation_Modules.md)
+// data.js -- CSV fetch and parse (4.0_Computation_Modules.md)
 // Exports: parseCsv, fetchTipsData
 
 const BASE_URL = 'https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/Treasuries';

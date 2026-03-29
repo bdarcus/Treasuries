@@ -62,7 +62,7 @@ function calcGapParams(gapYears, tipsMap, settlementDate, refCPI, dara, prelim) 
 // Upper bracket: always 2040.
 //
 // Returns: { results, HDR, summary }
-// Spec: knowledge/3.0_TIPS_Ladders.md and knowledge/4.0_TIPS_Ladder_Rebalancing.md §Full Rebalance
+// Spec: knowledge/2.0_TIPS_Ladders.md and knowledge/3.0_TIPS_Ladder_Rebalancing.md §Full Rebalance
 // Variable naming note: fundedYearQty, excessQty, costPerBond (harmonized) — see §Code Variable Mapping
 export function runBuild({ dara, firstYear: firstYearOpt, lastYear, tipsMap, refCPI, settlementDate, maturityPref = 'last', preLadderInterest = false, daraByYear = null }) {
   const firstYear      = firstYearOpt ?? settlementDate.getFullYear();
