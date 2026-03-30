@@ -483,8 +483,7 @@ async function fetchOne(symbol, range, force = false) {
   const isIntraday = range === '2D' || range === '10D';
 
   if (isIntraday) {
-    const providerRange = TIME_RANGE_MAP[range]; // '1D' or '5D'
-    const cacheKey = `${symbol}_${providerRange}`;
+    const cacheKey = `${symbol}_5D`;
     const cutoff = new Date();
     if (range === '2D') cutoff.setDate(cutoff.getDate() - 2);
     else cutoff.setDate(cutoff.getDate() - 10);
@@ -493,8 +492,8 @@ async function fetchOne(symbol, range, force = false) {
       return liveCache[cacheKey].filter(p => p.x >= cutoff);
     }
 
-    console.log(`%c[CNBC] %cFetching real-time ${range} for ${symbol}`, "color: #2563eb; font-weight: bold", "color: inherit");
-    const live = await fetchLive(symbol, range);
+    console.log(`%c[CNBC] %cFetching real-time 5D for ${symbol}`, "color: #2563eb; font-weight: bold", "color: inherit");
+    const live = await fetchLive(symbol, '10D');
 
     if (live && live.length > 0) {
       liveCache[cacheKey] = live;
@@ -506,12 +505,12 @@ async function fetchOne(symbol, range, force = false) {
     console.log(`%c[R2] %cLoading history for ${symbol}...`, "color: #ea580c; font-weight: bold", "color: inherit");
     const history = await fetchHistory(symbol);
 
-    // Reuse 1D live tip if cached, else fetch once
-    const tipKey = `${symbol}_1D`;
+    // Reuse 5D live tip if cached, else fetch once
+    const tipKey = `${symbol}_5D`;
     let liveTip = liveCache[tipKey];
     if (!liveTip || force) {
-      console.log(`%c[CNBC] %cFetching tip for ${symbol}...`, "color: #2563eb; font-weight: bold", "color: inherit");
-      liveTip = await fetchLive(symbol, '2D');
+      console.log(`%c[CNBC] %cFetching 5D tip for ${symbol}...`, "color: #2563eb; font-weight: bold", "color: inherit");
+      liveTip = await fetchLive(symbol, '10D');
       if (liveTip) liveCache[tipKey] = liveTip;
     }
 
@@ -735,10 +734,11 @@ async function updateAllData(force = false) {
       }
 
       // Calculate change since close (ET-aware)
-      const latestPoint = data[data.length - 1];
+      const live5D = liveCache[`${sym}_5D`];
+      const calculationData = (live5D && live5D.length > 0) ? live5D : data;
+      const latestPoint = calculationData[calculationData.length - 1];
       let closePoint = null;
       const latestDayET = getEtDateStr(latestPoint.x);
-      const fullData = (isIntraday && liveCache[sym]) ? liveCache[sym] : data;
       
       const etFmt = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/New_York', hourCycle: 'h23',
@@ -746,8 +746,8 @@ async function updateAllData(force = false) {
         hour: 'numeric', minute: 'numeric'
       });
 
-      for (let i = fullData.length - 1; i >= 0; i--) {
-        const p = fullData[i];
+      for (let i = calculationData.length - 1; i >= 0; i--) {
+        const p = calculationData[i];
         const parts = etFmt.formatToParts(p.x).reduce((a, pt) => ({ ...a, [pt.type]: pt.value }), {});
         const pDayET = `${parts.month}/${parts.day}/${parts.year}`;
 
