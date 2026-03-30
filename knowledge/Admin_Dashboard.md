@@ -120,8 +120,8 @@ Card border: green = all r2 files within threshold · amber = any stale · red =
       id, label, feeds,
       r2Key: string | null,
       r2: { key, lastModified, status, shortName } | null,
-      ghWorkflows: [{ workflow, label, status, conclusion, runAt, htmlUrl }],
-      localJobs: [{ id, label, cmd }],
+      ghWorkflows: [{ workflow, label, status, conclusion, runAt, htmlUrl, nextRunAt }],
+      localJobs: [{ id, label, cmd, windowsTaskName?: string, nextRunAt?: string | null }],
       alsoUsedBy: string[],   // other app labels sharing this r2Key
       stalenessHours: number | null,
       liveNote: string | null,  // for pipelines with no R2 file (live fetches)
@@ -152,11 +152,20 @@ GH_TOKEN=<PAT with workflow scope>
 `Dashboard/jobs.json` — local script registry (committed, no secrets):
 ```json
 [
-  { "id": "fidelity-download", "label": "Fidelity Download", "cmd": "...", "apps": ["yieldcurves"] },
+  { "id": "fidelity-download", "label": "Fidelity Download", "cmd": "...", "apps": ["yieldcurves"], "windowsTaskName": "Fidelity Download" },
   { "id": "fedinvest-download", "label": "FedInvest Download", "cmd": "...", "apps": ["yieldcurves"] },
   { "id": "upload-fidelity", "label": "Upload to R2", "cmd": "...", "apps": ["yieldcurves"] }
 ]
 ```
+
+`windowsTaskName` (optional) — if set, the server queries Windows Task Scheduler at status time to populate `nextRunAt`:
+```
+schtasks /query /fo csv /nh /tn "<windowsTaskName>"
+```
+The "Next Run Time" field from the CSV output is parsed and returned as an ISO string (or `null` if the task is disabled or not found).
+
+- Only jobs with `windowsTaskName` get a `nextRunAt` in the response; others omit the field.
+- The `schtasks` call is made per job entry; no deduplication needed (each task name is unique).
 
 ---
 
@@ -189,6 +198,5 @@ Treasuries/
 ## Deferred / Known Issues
 
 - **`Yields.csv` rename** — the filename is not descriptive. Candidate: `yieldsFromFedInvestPrices.csv`. Currently referenced in 18 files (tests, scripts, knowledge docs across YieldCurves + TipsLadderManager). Defer to a dedicated rename PR.
-- **Market Quotes panel** — ETF price/metrics panel; deferred (see `memory/project_market_quotes_dashboard.md`).
 - **YieldsMonitor yield history** — 14 symbol files; dashboard checks US10Y as a representative sample for freshness. Could expand to check all 14 and show min/max age.
 - **Deployment** — local-only; blocked by local script execution requirement.

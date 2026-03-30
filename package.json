@@ -12,7 +12,8 @@
     "test:e2e": "npm run test:e2e -w TipsLadderManager"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "marked": "^17.0.5"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1014.0",

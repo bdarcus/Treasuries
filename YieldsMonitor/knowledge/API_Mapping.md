@@ -1,6 +1,6 @@
 # Treasury Yields Monitor - API Mapping
 
-**Disclaimer:** For personal and educational use only. Data retrieved from public chart services. [Yields](../../shared/knowledge/GLOSSARY.md#yield) represent market mid-prices and may vary by provider.
+**Disclaimer:** For personal and educational use only. Data retrieved from public chart services. [Yields](../../knowledge/DATA_DICTIONARY.md#yield) represent market mid-prices and may vary by provider.
 
 ## Public Data Alternatives
 While this tool uses high-resolution (intraday) and real-time data feeds, official daily closing rates can be sourced from:
@@ -26,17 +26,17 @@ The underlying data provider uses specific `timeRange` parameters that do not al
 The following symbols are currently supported and grouped by security type:
 
 ### Nominal Treasuries
-- `US1M`: 1-Month [Treasury Bill](../../shared/knowledge/GLOSSARY.md#treasury-bill)
-- `US2M`: 2-Month [Treasury Bill](../../shared/knowledge/GLOSSARY.md#treasury-bill)
-- `US3M`: 3-Month [Treasury Bill](../../shared/knowledge/GLOSSARY.md#treasury-bill)
-- `US6M`: 6-Month [Treasury Bill](../../shared/knowledge/GLOSSARY.md#treasury-bill)
-- `US1Y`: 1-Year [Treasury Bill](../../shared/knowledge/GLOSSARY.md#treasury-bill)
-- `US2Y`: 2-Year [Treasury Note](../../shared/knowledge/GLOSSARY.md#treasury-note)
-- `US5Y`: 5-Year [Treasury Note](../../shared/knowledge/GLOSSARY.md#treasury-note)
-- `US10Y`: 10-Year [Treasury Note](../../shared/knowledge/GLOSSARY.md#treasury-note)
-- `US30Y`: 30-Year [Treasury Bond](../../shared/knowledge/GLOSSARY.md#treasury-bond)
+- `US1M`: 1-Month [Treasury Bill](../../knowledge/DATA_DICTIONARY.md#treasury-bill)
+- `US2M`: 2-Month [Treasury Bill](../../knowledge/DATA_DICTIONARY.md#treasury-bill)
+- `US3M`: 3-Month [Treasury Bill](../../knowledge/DATA_DICTIONARY.md#treasury-bill)
+- `US6M`: 6-Month [Treasury Bill](../../knowledge/DATA_DICTIONARY.md#treasury-bill)
+- `US1Y`: 1-Year [Treasury Bill](../../knowledge/DATA_DICTIONARY.md#treasury-bill)
+- `US2Y`: 2-Year [Treasury Note](../../knowledge/DATA_DICTIONARY.md#treasury-note)
+- `US5Y`: 5-Year [Treasury Note](../../knowledge/DATA_DICTIONARY.md#treasury-note)
+- `US10Y`: 10-Year [Treasury Note](../../knowledge/DATA_DICTIONARY.md#treasury-note)
+- `US30Y`: 30-Year [Treasury Bond](../../knowledge/DATA_DICTIONARY.md#treasury-bond)
 
-### [TIPS (Treasury Inflation-Protected Securities)](../../shared/knowledge/GLOSSARY.md#tips)
+### [TIPS (Treasury Inflation-Protected Securities)](../../knowledge/DATA_DICTIONARY.md#tips)
 - `US1YTIPS`: 1-Year TIPS
 - `US2YTIPS`: 2-Year TIPS
 - `US5YTIPS`: 5-Year TIPS

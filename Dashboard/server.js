@@ -2,6 +2,7 @@ import express from 'express';
 import { spawn, execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { resolve, dirname, join, relative, isAbsolute } from 'path';
+import { marked } from 'marked';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -134,6 +135,7 @@ const APP_CONFIGS = [
         ghWorkflows: [],
         localJobIds: ['fidelity-download', 'upload-fidelity'],
         stalenessHours: 24,
+        weekdayOnly: true,
       },
       {
         id: 'broker-tips',
@@ -143,6 +145,7 @@ const APP_CONFIGS = [
         ghWorkflows: [],
         localJobIds: ['fidelity-download', 'upload-fidelity'],
         stalenessHours: 24,
+        weekdayOnly: true,
       },
       {
         id: 'cpi-seasonal',
@@ -152,6 +155,7 @@ const APP_CONFIGS = [
         ghWorkflows: ['fetch-ref-cpi.yml', 'update-ref-cpi-nsa-sa.yml'],
         localJobIds: [],
         stalenessHours: 720,
+        weekdayOnly: true,
       },
       {
         id: 'bond-holidays',
@@ -161,6 +165,7 @@ const APP_CONFIGS = [
         ghWorkflows: [],
         localJobIds: [],
         stalenessHours: 8760, // annual — only changes once a year
+        weekdayOnly: true,
         r2Note: 'Manually maintained — no automated update',
       },
     ],
@@ -208,6 +213,7 @@ const APP_CONFIGS = [
         ghWorkflows: ['get-yields-fedinvest.yml'],
         localJobIds: [],
         stalenessHours: 24,
+        weekdayOnly: true,
       },
       {
         id: 'tips-reference',
@@ -406,7 +412,8 @@ app.get('/api/status', async (_req, res) => {
       if (wfError) { overallStatus = 'error'; break; }
       if (!p.r2 || !p.stalenessHours) continue;
       if (p.r2.status === 'error') { overallStatus = 'error'; break; }
-      const hrs = p.r2.lastModified ? (Date.now() - new Date(p.r2.lastModified)) / 3600000 : Infinity;
+      if (!p.r2.lastModified) continue; // file exists but no timestamp — skip staleness check
+      const hrs = (Date.now() - new Date(p.r2.lastModified)) / 3600000;
       const threshold = p.stalenessHours + (p.weekdayOnly ? weekendHoursElapsed(p.r2.lastModified) : 0);
       if (hrs > threshold && overallStatus !== 'error') overallStatus = 'stale';
     }
@@ -517,6 +524,61 @@ app.post('/api/gh/dispatch/:workflow', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── Markdown viewer ────────────────────────────────────────────────────────────
+app.get('/knowledge-map', (_req, res) => res.sendFile(join(REPO_ROOT, 'knowledge/KNOWLEDGE_MAP.html')));
+
+app.get('/md/*', (req, res) => {
+  const filePath = req.params[0];
+  const absPath = resolve(REPO_ROOT, filePath);
+  const rel = relative(REPO_ROOT, absPath);
+  if (rel.startsWith('..') || isAbsolute(rel) || !filePath.endsWith('.md')) {
+    return res.status(403).send('Forbidden');
+  }
+  if (!existsSync(absPath)) return res.status(404).send('Not found');
+
+  const title = filePath.split('/').pop();
+  const body = marked(readFileSync(absPath, 'utf8'));
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0d1a;color:#c0c8e0;font-family:'Segoe UI',sans-serif;font-size:14px;line-height:1.7;padding:32px 48px;max-width:900px}
+nav{margin-bottom:24px}
+nav a{color:#5577cc;text-decoration:none;font-size:12px;letter-spacing:.5px}
+nav a:hover{color:#aabbff}
+h1,h2,h3,h4{color:#9090ee;margin:1.6em 0 .5em;font-weight:500}
+h1{font-size:1.5em;border-bottom:1px solid #1e1e3a;padding-bottom:.4em}
+h2{font-size:1.2em}
+h3{font-size:1em;color:#7788cc}
+p{margin:.7em 0}
+a{color:#5577cc}
+a:hover{color:#aabbff}
+code{background:#141428;color:#aaddaa;padding:1px 5px;border-radius:3px;font-size:.9em}
+pre{background:#0a0a1a;border:1px solid #1e1e3a;border-radius:6px;padding:14px 18px;overflow-x:auto;margin:1em 0}
+pre code{background:none;padding:0;font-size:.85em;color:#b0c4b0}
+table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.9em}
+th{background:#141428;color:#8888cc;font-weight:500;text-align:left;padding:8px 12px;border:1px solid #222244}
+td{padding:7px 12px;border:1px solid #1a1a32;vertical-align:top}
+tr:nth-child(even) td{background:#0f0f22}
+blockquote{border-left:3px solid #334;margin:1em 0;padding:.5em 1em;color:#8899aa}
+hr{border:none;border-top:1px solid #1e1e3a;margin:2em 0}
+ul,ol{padding-left:1.4em;margin:.5em 0}
+li{margin:.2em 0}
+</style>
+</head>
+<body>
+<nav><a href="/knowledge-map">← Knowledge Map</a></nav>
+<main>${body}</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js" onerror="void 0"></script>
+<script>if(window.mermaid)mermaid.initialize({startOnLoad:true,theme:'dark'})</script>
+</body>
+</html>`);
 });
 
 app.listen(PORT, () => console.log(`Dashboard → http://localhost:${PORT}`));

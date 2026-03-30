@@ -305,8 +305,10 @@ function createChartInstance(sym) {
       plugins: {
         legend: { display: false },
         zoom: {
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
-          pan: { enabled: true, mode: 'xy' }
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy',
+            onZoomComplete: ({chart}) => rescaleYToVisible(chart, sym) },
+          pan: { enabled: true, mode: 'xy',
+            onPanComplete: ({chart}) => rescaleYToVisible(chart, sym) }
         },
         annotation: {
           annotations: {}
@@ -339,7 +341,29 @@ function createChartInstance(sym) {
     }
   });
 
-  setupAxisWheelZoom(ctx.canvas, charts[sym]);
+  setupAxisWheelZoom(
+    ctx.canvas,
+    ({chart}) => rescaleYToVisible(chart, sym),
+    ({chart, factor}) => {
+      const yMin = chart.scales.y.min;
+      const yMax = chart.scales.y.max;
+      const b = snapYBounds(yMin, yMax);
+      const step = b.step;
+      const s = v => Math.round(v / step * 1e9) / 1e9;
+      let min, max;
+      if (factor < 1) { // zooming in: snap inward
+        min = Math.ceil(s(yMin)) * step;
+        max = Math.floor(s(yMax)) * step;
+        if (min >= max) { min = b.min; max = b.max; }
+      } else {
+        min = b.min; max = b.max;
+      }
+      chart.options.scales.y.min = min;
+      chart.options.scales.y.max = max;
+      chart.options.scales.y.ticks.stepSize = step;
+      chart.update('none');
+    }
+  );
 
   const container = document.getElementById(`card-${sym}`);
   new ResizeObserver(() => {
@@ -551,15 +575,61 @@ async function fetchHistory(symbol) {
   return await historyCache[symbol];
 }
 
+function snapYBounds(min, max) {
+  const range = max - min;
+  let step = 0.25;
+  if (range < 0.3) step = 0.05;
+  else if (range < 1) step = 0.10;
+  else if (range >= 4) step = 0.50;
+  if (range >= 8) step = 1.00;
+  const snap = v => Math.round(v / step * 1e9) / 1e9;
+  return {
+    min: Math.floor(snap(min)) * step,
+    max: Math.ceil(snap(max)) * step,
+    step
+  };
+}
+
+function snapXMax(date) {
+  const d = new Date(date instanceof Date ? date.getTime() : +date);
+  if (activeRange === '2D') {
+    d.setMinutes(0, 0, 0);
+    d.setTime(d.getTime() + 3600 * 1000); // next hour
+  } else if (activeRange === '10D') {
+    d.setHours(24, 0, 0, 0); // next midnight
+  } else {
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    d.setHours(0, 0, 0, 0); // first of next month
+  }
+  return d;
+}
+
+function rescaleYToVisible(chart, sym) {
+  const data = rangeData[sym];
+  if (!data || data.length === 0) return;
+  const xMin = chart.scales.x.min;
+  const xMax = chart.scales.x.max;
+  const visible = data.filter(p => {
+    const t = p.x instanceof Date ? p.x.getTime() : +p.x;
+    return t >= xMin && t <= xMax;
+  });
+  if (visible.length === 0) return;
+  const yields = visible.map(p => p.y);
+  const bounds = snapYBounds(Math.min(...yields), Math.max(...yields));
+  chart.options.scales.y.min = bounds.min;
+  chart.options.scales.y.max = bounds.max;
+  chart.options.scales.y.ticks.stepSize = bounds.step;
+  chart.update('none');
+}
+
 function updateDynamicTicks(chart, data) {
   if (!data || data.length === 0) return;
   const yields = data.map(p => p.y);
-  const min = Math.min(...yields);
-  const max = Math.max(...yields);
-  const range = max - min;
-  const padding = range * 0.1 || 0.01;
-  chart.options.scales.y.min = min - padding;
-  chart.options.scales.y.max = max + padding;
+  const bounds = snapYBounds(Math.min(...yields), Math.max(...yields));
+  chart.options.scales.y.min = bounds.min;
+  chart.options.scales.y.max = bounds.max;
+  chart.options.scales.y.ticks.stepSize = bounds.step;
 
   // Add 8am/5pm ET annotations if intraday
   if (activeRange === '2D' || activeRange === '10D') {
@@ -660,6 +730,8 @@ async function updateAllData(force = false) {
         updateDynamicTicks(chart, data);
         chart.update('none');
         chart.resetZoom();
+        chart.options.scales.x.max = snapXMax(data[data.length - 1].x).getTime();
+        chart.update('none');
       }
 
       // Calculate change since close (ET-aware)

@@ -19,7 +19,7 @@ Understandability is our primary metric. Every UI adjustment and logic decision 
 Knowledge is layered. A user should be able to start at a high-level summary and "drill" all the way down to the legal authority.
 - **Level 1: The UI**: Clean, actionable, and distraction-free.
 - **Level 2: The Drill-Down**: Interactive popups showing the exact calculation chain.
-- **Level 3: The Specification**: Internal knowledge documents (`shared/knowledge/`) that define our implementation.
+- **Level 3: The Specification**: Internal knowledge documents (`knowledge/`) that define our implementation.
 - **Level 4: The Authority**: Direct references to the source of truth, such as the **Code of Federal Regulations (CFR)** or official BLS/Treasury methodology.
   - *Example*: Explaining that Ref CPI for the 1st of the month is equal to the CPI-U (NSA) from three months prior, per 31 CFR § 356.
 

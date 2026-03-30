@@ -836,8 +836,8 @@ function renderNominalsChart(fedBonds, fidBonds) {
           onClick: (e, legendItem, legend) => { Chart.defaults.plugins.legend.onClick(e, legendItem, legend); rescaleToVisible(legend.chart); }
         },
         zoom: {
-          pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => updateDynamicTicks(chart) },
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => updateDynamicTicks(chart) }
+          pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => rescaleToVisible(chart) },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => rescaleToVisible(chart) }
         },
         tooltip: {
           backgroundColor: 'rgba(255,255,255,0.95)', titleColor: '#1e293b', bodyColor: '#475569',
@@ -861,7 +861,7 @@ function renderNominalsChart(fedBonds, fidBonds) {
     chart.update('none');
   }
 
-  setupAxisWheelZoom(chart.canvas, chart);
+  setupAxisWheelZoom(chart.canvas, ({chart}) => rescaleToVisible(chart), ({chart, factor}) => snapYZoom(chart, factor));
 
   document.getElementById('resetZoom').onclick = () => {
     savedZoom['treasuries'] = null;
@@ -1109,8 +1109,8 @@ function renderChart(fedBonds, brokerBonds) {
           onClick: (e, item, legend) => { Chart.defaults.plugins.legend.onClick(e, item, legend); rescaleToVisible(legend.chart); }
         },
         zoom: {
-          pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => updateDynamicTicks(chart) },
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => updateDynamicTicks(chart) }
+          pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => rescaleToVisible(chart) },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => rescaleToVisible(chart) }
         },
         tooltip: {
           backgroundColor: 'rgba(255,255,255,0.95)', titleColor: '#1e293b', bodyColor: '#475569', borderColor: '#e2e8f0', borderWidth: 1, padding: 8, cornerRadius: 6, displayColors: false,
@@ -1131,7 +1131,7 @@ function renderChart(fedBonds, brokerBonds) {
     chart.update('none');
   }
 
-  setupAxisWheelZoom(chart.canvas, chart);
+  setupAxisWheelZoom(chart.canvas, ({chart}) => rescaleToVisible(chart), ({chart, factor}) => snapYZoom(chart, factor));
 
   document.getElementById('resetZoom').onclick = () => {
     savedZoom['tips'] = null;
@@ -1141,11 +1141,13 @@ function renderChart(fedBonds, brokerBonds) {
 }
 
 function rescaleToVisible(chart) {
+  const xMin = chart.scales.x.min;
+  const xMax = chart.scales.x.max;
   let allVisibleY = [];
 
   chart.data.datasets.forEach((dataset, i) => {
     if (!chart.isDatasetVisible(i)) return;
-    dataset.data.forEach(p => allVisibleY.push(p.y));
+    dataset.data.forEach(p => { if (p.x >= xMin && p.x <= xMax) allVisibleY.push(p.y); });
   });
 
   if (allVisibleY.length === 0) return;
@@ -1155,7 +1157,7 @@ function rescaleToVisible(chart) {
     const notesVisibleY = [];
     chart.data.datasets.forEach((dataset, i) => {
       if (!chart.isDatasetVisible(i) || !dataset.label.includes('Notes')) return;
-      dataset.data.forEach(p => notesVisibleY.push(p.y));
+      dataset.data.forEach(p => { if (p.x >= xMin && p.x <= xMax) notesVisibleY.push(p.y); });
     });
     const notesVisibleYPos = notesVisibleY.filter(y => y > 0);
     if (notesVisibleYPos.length >= 4) {
@@ -1173,25 +1175,39 @@ function rescaleToVisible(chart) {
   let newStep = 0.25;
   if (range > 3) newStep = 0.50;
   if (range > 7) newStep = 1.00;
-  if (range < 0.6) newStep = 0.05;
+  if (range < 0.6) newStep = 0.10;
+  if (range < 0.3) newStep = 0.05;
+  const snap = v => Math.round(v / newStep * 1e9) / 1e9;
 
-  chart.options.scales.y.min = Math.floor((visibleMinY - 0.01) / newStep) * newStep;
-  chart.options.scales.y.max = Math.ceil((visibleMaxY + 0.01) / newStep) * newStep;
+  chart.options.scales.y.min = Math.floor(snap(visibleMinY)) * newStep;
+  chart.options.scales.y.max = Math.ceil(snap(visibleMaxY)) * newStep;
   chart.options.scales.y.ticks.stepSize = newStep;
   chart.update('none');
 }
 
-function updateDynamicTicks(chart) {
+function snapYZoom(chart, factor) {
+  // Direction-aware snap: zoom-in snaps inward, zoom-out snaps outward
   const yMin = chart.scales.y.min;
   const yMax = chart.scales.y.max;
   const range = yMax - yMin;
-
-  let newStep = 0.25;
-  if (range > 3) newStep = 0.50;
-  if (range > 7) newStep = 1.00;
-  if (range < 0.6) newStep = 0.05;
-
-  chart.options.scales.y.ticks.stepSize = newStep;
+  let step = 0.25;
+  if (range > 3) step = 0.50;
+  if (range > 7) step = 1.00;
+  if (range < 0.6) step = 0.10;
+  if (range < 0.3) step = 0.05;
+  const s = v => Math.round(v / step * 1e9) / 1e9;
+  let min, max;
+  if (factor < 1) { // zooming in: snap inward so range actually shrinks
+    min = Math.ceil(s(yMin)) * step;
+    max = Math.floor(s(yMax)) * step;
+    if (min >= max) { min = Math.floor(s(yMin)) * step; max = Math.ceil(s(yMax)) * step; }
+  } else { // zooming out: snap outward
+    min = Math.floor(s(yMin)) * step;
+    max = Math.ceil(s(yMax)) * step;
+  }
+  chart.options.scales.y.min = min;
+  chart.options.scales.y.max = max;
+  chart.options.scales.y.ticks.stepSize = step;
   chart.update('none');
 }
 

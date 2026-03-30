@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Treasury Portal</title>
+<title>Treasuries Dashboard</title>
 <style>
 *,*::before,*::after{box-sizing:border-box}
 body{font-family:system-ui,sans-serif;font-size:13px;margin:0;background:#f1f5f9;color:#0f172a;overflow:hidden;height:100vh;display:flex;flex-direction:column}
@@ -125,10 +125,11 @@ body{font-family:system-ui,sans-serif;font-size:13px;margin:0;background:#f1f5f9
 <body>
 
 <div id="hdr">
-  <h1>Treasury Portal</h1>
+  <h1>Treasuries Dashboard</h1>
   <span id="hdr-sub">System Map</span>
   <div id="hdr-right">
     <span id="fetched-at">Loading…</span>
+    <a class="hdr-btn" href="/knowledge-map" target="_blank">Knowledge Map</a>
     <button class="hdr-btn" id="refresh-btn">Refresh</button>
   </div>
 </div>
@@ -282,7 +283,7 @@ const EDGES = [
   {id:'eE6P7',from:'E6',to:'P7',style:'solid',  desc:'Broker quotes'},
   {id:'eE7P8',from:'E7',to:'P8',style:'solid',  desc:'Bond market holiday schedule'},
   // dependencies (dashed, backward)
-  {id:'eS2P1',from:'S2',to:'P1',style:'dashed', desc:'TipsRef lookup — P1 reads TIPS dated dates to compute inflation-adjusted yields'},
+  {id:'eS2P1',from:'S2',to:'P1',style:'dashed', desc:'TipsRef lookup — P1 reads TIPS coupon + maturity from S2 (FedInvest omits these fields for TIPS)'},
   {id:'eS6P6',from:'S6',to:'P6',style:'dashed', desc:'Existing history — P6 reads prior snapshots before appending new data point'},
   // P → S storage (solid)
   {id:'eP1S1',from:'P1',to:'S1',style:'solid',  desc:'Writes Yields.csv'},
@@ -530,6 +531,7 @@ function applyStatusDots(){
       if(s==='error'){ appStatus='error'; break; }
       if(s==='stale'&&appStatus!=='error') appStatus='stale';
     }
+    if(app.id==='yieldcurves') console.log('[DEBUG A1] appStatus=',appStatus, app.pipelines.map(p=>({id:p.id,s:pipelineStatus(p),wdOnly:p.weekdayOnly,lastMod:p.r2?.lastModified})));
     if(appNode) nodeStatus[appNode]=appStatus;
     for(const p of app.pipelines){
       // workflows → process node
@@ -577,7 +579,8 @@ function weekendHoursElapsed(iso){
 function pipelineStatus(p){
   if(!p.r2||!p.stalenessHours) return null;
   if(p.r2.status==='error') return 'error';
-  const hrs = p.r2.lastModified?(Date.now()-new Date(p.r2.lastModified))/3600000:Infinity;
+  if(!p.r2.lastModified) return null;
+  const hrs = (Date.now()-new Date(p.r2.lastModified))/3600000;
   const threshold = p.stalenessHours+(p.weekdayOnly?weekendHoursElapsed(p.r2.lastModified):0);
   return hrs<=threshold?'fresh':'stale';
 }
