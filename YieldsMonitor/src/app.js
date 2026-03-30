@@ -69,6 +69,10 @@ const ET_HM_FMT = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric', minute: 'numeric'
 });
 
+const ET_WDAY_FMT = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York', weekday: 'short'
+});
+
 let lastDayCache = { start: 0, end: 0, str: "" };
 
 const SYMBOL_LABELS = {
@@ -284,7 +288,7 @@ function createChartInstance(sym) {
           borderColor: ctx => {
             if (activeRange !== '2D' && activeRange !== '10D') return color;
             const mid = (ctx.p0.parsed.x + ctx.p1.parsed.x) / 2;
-            return isAfterHoursEt(mid) ? color + '55' : color;
+            return (isAfterHoursEt(mid) || isWeekendEt(new Date(mid))) ? color + '55' : color;
           }
         }
       }]
@@ -475,6 +479,11 @@ function isAfterHoursEt(tsMs) {
   return mins < 8 * 60 || mins >= 17 * 60;
 }
 
+function isWeekendEt(date) {
+  const s = ET_WDAY_FMT.format(date);
+  return s === 'Sat' || s === 'Sun';
+}
+
 async function fetchWithTimeout(url, options = {}, timeout = 8000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -646,55 +655,64 @@ function updateDynamicTicks(chart, data) {
   // Add 8am/5pm ET annotations if intraday
   if (activeRange === '2D' || activeRange === '10D') {
     const annotations = {};
-    const etDateStrs = [...new Set(data.map(p => getEtDateStr(p.x)))];
+    
+    // Iterate from the start of data through "now" to ensure weekends/gaps are covered
+    const nowTs = new Date().getTime();
+    const [fm, fd, fy] = getEtDateStr(data[0].x).split('/').map(Number);
+    let current = makeEtMoment(fy, fm - 1, fd, 0);
+    let dayIdx = 0;
 
-    etDateStrs.forEach((etDateStr, idx) => {
+    const AH_BG = 'rgba(148, 163, 184, 0.13)';
+
+    while (current.getTime() <= nowTs) {
+      const etDateStr = getEtDateStr(current);
       const dayData = data.filter(p => getEtDateStr(p.x) === etDateStr);
-      if (dayData.length === 0) return;
-
-      const dayMin = dayData[0].x;
-      const dayMax = dayData[dayData.length - 1].x;
-
-      // Parse "MM/DD/YYYY" → ET calendar parts, then build exact ET UTC instants
+      
       const [m, d, y] = etDateStr.split('/').map(Number);
       const midnight = makeEtMoment(y, m - 1, d, 0);
       const am8 = makeEtMoment(y, m - 1, d, 8);
       const pm5 = makeEtMoment(y, m - 1, d, 17);
-      const nextMidnight = makeEtMoment(y, m - 1, d + 1, 0); // JS Date handles month/year rollover
+      const nextMidnight = makeEtMoment(y, m - 1, d + 1, 0);
 
-      // After-hours background shading (pre-market and post-market)
-      const AH_BG = 'rgba(148, 163, 184, 0.13)';
-      annotations[`pre-bg-${idx}`] = {
-        type: 'box', xMin: midnight, xMax: am8,
-        backgroundColor: AH_BG, borderWidth: 0, drawTime: 'beforeDatasetsDraw'
-      };
-      annotations[`aft-bg-${idx}`] = {
-        type: 'box', xMin: pm5, xMax: nextMidnight,
-        backgroundColor: AH_BG, borderWidth: 0, drawTime: 'beforeDatasetsDraw'
-      };
+      if (isWeekendEt(current)) {
+        // Full weekend day gray
+        annotations[`weekend-bg-${dayIdx}`] = {
+          type: 'box', xMin: midnight, xMax: nextMidnight,
+          backgroundColor: AH_BG, borderWidth: 0, drawTime: 'beforeDatasetsDraw'
+        };
+      } else {
+        // Weekday: pre-market and post-market
+        annotations[`pre-bg-${dayIdx}`] = {
+          type: 'box', xMin: midnight, xMax: am8,
+          backgroundColor: AH_BG, borderWidth: 0, drawTime: 'beforeDatasetsDraw'
+        };
+        annotations[`aft-bg-${dayIdx}`] = {
+          type: 'box', xMin: pm5, xMax: nextMidnight,
+          backgroundColor: AH_BG, borderWidth: 0, drawTime: 'beforeDatasetsDraw'
+        };
 
-      // Vertical open/close lines — only if they fall within data we have for this day
-      // (or if it's today and we're during market hours)
-      if (am8 >= dayMin && am8 <= dayMax) {
-        annotations[`am8-${idx}`] = {
-          type: 'line',
-          xMin: am8, xMax: am8,
-          borderColor: 'rgba(15, 23, 42, 0.4)', // Slightly softer
-          borderWidth: 1.5, borderDash: [4, 4],
-          label: { display: false }
-        };
+        if (dayData.length > 0) {
+          const dayMin = dayData[0].x;
+          const dayMax = dayData[dayData.length - 1].x;
+          if (am8 >= dayMin && am8 <= dayMax) {
+            annotations[`am8-${dayIdx}`] = {
+              type: 'line', xMin: am8, xMax: am8,
+              borderColor: 'rgba(15, 23, 42, 0.4)', borderWidth: 1.5, borderDash: [4, 4],
+              label: { display: false }
+            };
+          }
+          if (pm5 >= dayMin && pm5 <= dayMax) {
+            annotations[`pm5-${dayIdx}`] = {
+              type: 'line', xMin: pm5, xMax: pm5,
+              borderColor: 'rgba(15, 23, 42, 0.4)', borderWidth: 1.5, borderDash: [4, 4],
+              label: { display: false }
+            };
+          }
+        }
       }
-      
-      if (pm5 >= dayMin && pm5 <= dayMax) {
-        annotations[`pm5-${idx}`] = {
-          type: 'line',
-          xMin: pm5, xMax: pm5,
-          borderColor: 'rgba(15, 23, 42, 0.4)', // Slightly softer
-          borderWidth: 1.5, borderDash: [4, 4],
-          label: { display: false }
-        };
-      }
-    });
+      current = nextMidnight;
+      dayIdx++;
+    }
     chart.options.plugins.annotation.annotations = annotations;
   } else {
     chart.options.plugins.annotation.annotations = {};
