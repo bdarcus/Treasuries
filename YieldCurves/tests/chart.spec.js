@@ -47,7 +47,7 @@ test.describe('Yield Curves Chart and UI', () => {
 
   test('should show correct yield curve labels', async ({ page }) => {
     const infoStrip = page.locator('#info-strip');
-    await expect(infoStrip).toContainText('FedInvest market data · Settlement Date: 2026-03-19 (T)');
+    await expect(infoStrip).toContainText('FedInvest settle 03/19/2026 (T)');
   });
 
   test('should allow maturity range filtering', async ({ page }) => {

@@ -435,6 +435,23 @@ async function init() {
       console.warn('Fidelity TIPS not available on R2');
     }
 
+    const startEl = document.getElementById('startMaturity');
+    const endEl = document.getElementById('endMaturity');
+    const startCalEl = document.getElementById('startMaturityCal');
+    const endCalEl = document.getElementById('endMaturityCal');
+
+    setupDateInput(startEl, startCalEl, () => { savedZoom[activeTab] = null; processAndRender(); });
+    setupDateInput(endEl, endCalEl, () => { savedZoom[activeTab] = null; processAndRender(); });
+
+    document.getElementById('resetZoom').onclick = () => {
+      savedZoom[activeTab] = null;
+      document.getElementById('startMaturity').value = '';
+      document.getElementById('endMaturity').value = '';
+      document.getElementById('startMaturityCal').value = '';
+      document.getElementById('endMaturityCal').value = '';
+      processAndRender();
+    };
+
     processAndRender();
 
     window.addEventListener('keydown', (e) => {
@@ -631,8 +648,6 @@ function processAndRenderNominals() {
       endEl.value = isoToMDY(allBonds[allBonds.length - 1].maturity);
       startCalEl.value = allBonds[0].maturity;
       endCalEl.value = allBonds[allBonds.length - 1].maturity;
-      setupDateInput(startEl, startCalEl, () => { savedZoom['treasuries'] = null; processAndRender(); });
-      setupDateInput(endEl, endCalEl, () => { savedZoom['treasuries'] = null; processAndRender(); });
     }
 
     const startDate = parseDateInput(startEl.value) || new Date(0);
@@ -796,7 +811,7 @@ function renderNominalsChart(fedBonds, fidBonds) {
   const step = dataRange <= 0.5 ? 0.05 : dataRange <= 1.0 ? 0.1 : 0.25;
 
   const zoomToRestore = savedZoom['treasuries'];
-  if (chart && chartTab) savedZoom[chartTab] = {
+  if (chart && chartTab && savedZoom[chartTab] !== null) savedZoom[chartTab] = {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max
   };
@@ -942,8 +957,6 @@ function processAndRenderTips() {
       endEl.value = isoToMDY(allCurrent[allCurrent.length - 1].maturity);
       startCalEl.value = allCurrent[0].maturity;
       endCalEl.value = allCurrent[allCurrent.length - 1].maturity;
-      setupDateInput(startEl, startCalEl, () => { savedZoom['tips'] = null; processAndRender(); });
-      setupDateInput(endEl, endCalEl, () => { savedZoom['tips'] = null; processAndRender(); });
     }
 
     const startDate = parseDateInput(startEl.value) || new Date(0);
@@ -1096,7 +1109,7 @@ function renderChart(fedBonds, brokerBonds) {
   const maxY = Math.ceil(Math.max(...allY) * 4) / 4;
 
   const zoomToRestore = savedZoom['tips'];
-  if (chart && chartTab) savedZoom[chartTab] = {
+  if (chart && chartTab && savedZoom[chartTab] !== null) savedZoom[chartTab] = {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max
   };
@@ -1256,10 +1269,24 @@ document.getElementById('nominalsShowNone').onclick = (e) => {
 
 // Unified Source Change Handlers
 ['chkTipsFed', 'chkTipsBroker'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => { savedZoom['tips'] = null; processAndRender(); });
+  document.getElementById(id).addEventListener('change', () => { 
+    savedZoom['tips'] = null; 
+    document.getElementById('startMaturity').value = '';
+    document.getElementById('endMaturity').value = '';
+    document.getElementById('startMaturityCal').value = '';
+    document.getElementById('endMaturityCal').value = '';
+    processAndRender(); 
+  });
 });
 ['chkFedInvest', 'chkFidelity'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => { savedZoom['treasuries'] = null; processAndRender(); });
+  document.getElementById(id).addEventListener('change', () => { 
+    savedZoom['treasuries'] = null; 
+    document.getElementById('startMaturity').value = '';
+    document.getElementById('endMaturity').value = '';
+    document.getElementById('startMaturityCal').value = '';
+    document.getElementById('endMaturityCal').value = '';
+    processAndRender(); 
+  });
 });
 
 document.getElementById('tableBody').addEventListener('click', (e) => {
@@ -1315,6 +1342,10 @@ document.getElementById('nominalsControls').addEventListener('change', (e) => {
   if (e.target.id === 'filterStrips') {
     nominalsShowStrips = e.target.checked;
     savedZoom['treasuries'] = null;
+    document.getElementById('startMaturity').value = '';
+    document.getElementById('endMaturity').value = '';
+    document.getElementById('startMaturityCal').value = '';
+    document.getElementById('endMaturityCal').value = '';
     processAndRenderNominals();
     return;
   }
@@ -1323,6 +1354,10 @@ document.getElementById('nominalsControls').addEventListener('change', (e) => {
   if (e.target.checked) nominalsTypeFilters.add(type);
   else nominalsTypeFilters.delete(type);
   savedZoom['treasuries'] = null;
+  document.getElementById('startMaturity').value = '';
+  document.getElementById('endMaturity').value = '';
+  document.getElementById('startMaturityCal').value = '';
+  document.getElementById('endMaturityCal').value = '';
   processAndRenderNominals();
 });
 
