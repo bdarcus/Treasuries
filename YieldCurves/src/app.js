@@ -631,8 +631,8 @@ function processAndRenderNominals() {
       endEl.value = isoToMDY(allBonds[allBonds.length - 1].maturity);
       startCalEl.value = allBonds[0].maturity;
       endCalEl.value = allBonds[allBonds.length - 1].maturity;
-      setupDateInput(startEl, startCalEl, () => processAndRender());
-      setupDateInput(endEl, endCalEl, () => processAndRender());
+      setupDateInput(startEl, startCalEl, () => { savedZoom['treasuries'] = null; processAndRender(); });
+      setupDateInput(endEl, endCalEl, () => { savedZoom['treasuries'] = null; processAndRender(); });
     }
 
     const startDate = parseDateInput(startEl.value) || new Date(0);
@@ -761,9 +761,15 @@ function renderNominalsChart(fedBonds, fidBonds) {
 
   const minDate = new Date(Math.min(...allPoints.map(d => d.x)));
   const maxDate = new Date(Math.max(...allPoints.map(d => d.x)));
-  const minX = new Date(minDate.getFullYear(), minDate.getMonth(), 1).getTime();
-  const maxX = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 1).getTime();
-  const spanMonths = (maxDate.getFullYear() - minDate.getFullYear()) * 12 + (maxDate.getMonth() - minDate.getMonth());
+  const _startDtN = parseDateInput(document.getElementById('startMaturity').value);
+  const _endDtN   = parseDateInput(document.getElementById('endMaturity').value);
+  const minX = _startDtN
+    ? new Date(_startDtN.getFullYear(), _startDtN.getMonth(), 1).getTime()
+    : new Date(minDate.getFullYear(), minDate.getMonth(), 1).getTime();
+  const maxX = _endDtN
+    ? new Date(_endDtN.getFullYear(), _endDtN.getMonth() + 1, 1).getTime()
+    : new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 1).getTime();
+  const spanMonths = (new Date(maxX) - new Date(minX)) / (1000 * 60 * 60 * 24 * 30.5);
   const timeUnit = spanMonths <= 18 ? 'month' : 'year';
   const allY = allPoints.map(d => d.y);
   let scaleY = allY;
@@ -936,8 +942,8 @@ function processAndRenderTips() {
       endEl.value = isoToMDY(allCurrent[allCurrent.length - 1].maturity);
       startCalEl.value = allCurrent[0].maturity;
       endCalEl.value = allCurrent[allCurrent.length - 1].maturity;
-      setupDateInput(startEl, startCalEl, () => processAndRender());
-      setupDateInput(endEl, endCalEl, () => processAndRender());
+      setupDateInput(startEl, startCalEl, () => { savedZoom['tips'] = null; processAndRender(); });
+      setupDateInput(endEl, endCalEl, () => { savedZoom['tips'] = null; processAndRender(); });
     }
 
     const startDate = parseDateInput(startEl.value) || new Date(0);
@@ -1037,6 +1043,14 @@ function renderTable(fedBonds, brokerBonds) {
   }
 }
 
+function getTipsSeriesVisibility(label) {
+  const base = label.split(' ')[0];
+  if (base === 'Ask') return document.getElementById('showTipsAsk').checked;
+  if (base === 'SA') return document.getElementById('showTipsSa').checked;
+  if (base === 'SAO') return document.getElementById('showTipsSao').checked;
+  return true;
+}
+
 function renderChart(fedBonds, brokerBonds) {
   const ctx = document.getElementById('yieldChart').getContext('2d');
   const allBonds = [...(fedBonds || []), ...(brokerBonds || [])];
@@ -1067,8 +1081,16 @@ function renderChart(fedBonds, brokerBonds) {
   const allPoints = activeSeries.flatMap(s => s.data);
   const minDate = new Date(Math.min(...allPoints.map(d => d.x)));
   const maxDate = new Date(Math.max(...allPoints.map(d => d.x)));
-  const minX = new Date(minDate.getFullYear(), 0, 1).getTime();
-  const maxX = new Date(maxDate.getFullYear() + 1, 0, 1).getTime();
+  const _startDt = parseDateInput(document.getElementById('startMaturity').value);
+  const _endDt   = parseDateInput(document.getElementById('endMaturity').value);
+  const minX = _startDt
+    ? new Date(_startDt.getFullYear(), _startDt.getMonth(), 1).getTime()
+    : new Date(minDate.getFullYear(), 0, 1).getTime();
+  const maxX = _endDt
+    ? new Date(_endDt.getFullYear(), _endDt.getMonth() + 1, 1).getTime()
+    : new Date(maxDate.getFullYear() + 1, 0, 1).getTime();
+  const spanMonths = (maxX - minX) / (1000 * 60 * 60 * 24 * 30.5);
+  const timeUnit = spanMonths <= 18 ? 'month' : 'year';
   const allY = allPoints.map(d => d.y);
   const minY = Math.floor(Math.min(...allY) * 4) / 4;
   const maxY = Math.ceil(Math.max(...allY) * 4) / 4;
@@ -1091,7 +1113,8 @@ function renderChart(fedBonds, brokerBonds) {
         borderWidth: s.w,
         pointRadius: s.r,
         pointStyle: s.style,
-        tension: 0.1
+        tension: 0.1,
+        hidden: !getTipsSeriesVisibility(s.label)
       }))
     },
     options: {
@@ -1100,13 +1123,13 @@ function renderChart(fedBonds, brokerBonds) {
       animation: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       scales: {
-        x: { type: 'time', min: minX, max: maxX, time: { unit: 'year', displayFormats: { year: 'MMM yyyy' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { type: 'time', min: minX, max: maxX, time: { unit: timeUnit, displayFormats: { year: 'MMM yyyy', month: 'MMM yyyy' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
         y: { type: 'linear', title: { display: true, text: 'Yield (%)' }, min: minY, max: maxY, ticks: { stepSize: 0.25, callback: (v) => v.toFixed(2) } }
       },
       plugins: {
         legend: {
-          labels: { usePointStyle: true, boxWidth: 8, padding: 15, font: { size: 12, weight: '500' } },
-          onClick: (e, item, legend) => { Chart.defaults.plugins.legend.onClick(e, item, legend); rescaleToVisible(legend.chart); }
+          labels: { filter: (item) => !item.hidden, usePointStyle: true, boxWidth: 8, padding: 15, font: { size: 12, weight: '500' } },
+          onClick: null
         },
         zoom: {
           pan: { enabled: true, mode: 'xy' },
@@ -1182,16 +1205,12 @@ function rescaleToVisible(chart) {
 // ─── Interaction Handlers ────────────────────────────────────────────────────
 
 // TIPS 'Show' Checkboxes & Links
-['showTipsAsk', 'showTipsSa', 'showTipsSao'].forEach((id, idx) => {
+['showTipsAsk', 'showTipsSa', 'showTipsSao'].forEach((id) => {
   document.getElementById(id).addEventListener('change', (e) => {
     if (!chart || activeTab !== 'tips') return;
-    const both = document.getElementById('chkTipsFed').checked && document.getElementById('chkTipsBroker').checked;
-    
-    // Dataset indexing: if both sources are active, indices are 0-2 (Fed), 3-5 (Broker)
-    // Indices map: 0/3=Ask, 1/4=SA, 2/5=SAO
-    const indices = both ? [idx, idx + 3] : [idx];
-    indices.forEach(i => {
-      if (chart.data.datasets[i]) chart.setDatasetVisibility(i, e.target.checked);
+    const seriesKey = id === 'showTipsAsk' ? 'Ask' : id === 'showTipsSa' ? 'SA' : 'SAO';
+    chart.data.datasets.forEach((ds, i) => {
+      if (ds.label.split(' ')[0] === seriesKey) chart.setDatasetVisibility(i, e.target.checked);
     });
     chart.update('none');
     rescaleToVisible(chart);
