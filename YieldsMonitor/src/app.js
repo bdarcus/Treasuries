@@ -39,6 +39,7 @@ const TIME_RANGES = Object.keys(TIME_RANGE_MAP);
 const charts = {}; 
 const historyCache = {}; 
 const liveCache = {}; 
+const liveCacheTime = {}; // symbol_range -> timestamp
 const rangeData = {}; 
 const yieldCurveCharts = {}; 
 let activeSymbols = new Set(['US10YTIPS', 'US30YTIPS', 'US10Y', 'US30Y']);
@@ -152,9 +153,11 @@ function createChartInstance(sym) {
   new ResizeObserver(() => { if (charts[sym]) charts[sym].resize(); }).observe(document.getElementById(`card-${sym}`));
 }
 
-function buildUrl(symbol, timeRange) {
-  const providerRange = TIME_RANGE_MAP[timeRange] || '1D';
-  const params = { operationName: "getQuoteChartData", variables: JSON.stringify({ symbol, timeRange: providerRange }), extensions: JSON.stringify({ persistedQuery: { version: 1, sha256Hash: "9e1670c29a10707c417a1efd327d4b2b1d456b77f1426e7e84fb7d399416bb6b" } }), _cb: Date.now() };
+function buildUrl(symbol, range) {
+  const providerRange = TIME_RANGE_MAP[range] || range || '1D';
+  const vars = { symbol, timeRange: providerRange };
+  if (providerRange === '5D') vars.interval = "10";
+  const params = { operationName: "getQuoteChartData", variables: JSON.stringify(vars), extensions: JSON.stringify({ persistedQuery: { version: 1, sha256Hash: "9e1670c29a10707c417a1efd327d4b2b1d456b77f1426e7e84fb7d399416bb6b" } }), _cb: Date.now() };
   return "https://webql-redesign.cnbcfm.com/graphql?" + Object.entries(params).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
 }
 
@@ -197,14 +200,18 @@ async function fetchOne(symbol, range, force = false) {
     const providerRange = is2D ? '1D' : '5D', cacheKey = `${symbol}_${providerRange}`;
     if (!force && liveCache[cacheKey]) {
       const cutoff = new Date(); if (is2D) cutoff.setDate(cutoff.getDate() - 2); else cutoff.setDate(cutoff.getDate() - 10);
-      return liveCache[cacheKey].filter(p => p.x >= cutoff);
+      const filtered = liveCache[cacheKey].filter(p => p.x >= cutoff);
+      console.log(`[fetchOne] ${symbol} ${range} using cache ${cacheKey}, points: ${liveCache[cacheKey].length} -> ${filtered.length}`);
+      return filtered;
     }
     console.log(`%c[CNBC] %cFetching real-time ${providerRange} for ${symbol}`, "color: #2563eb; font-weight: bold", "color: inherit");
     const live = await fetchLive(symbol, providerRange);
     if (live && live.length > 0) {
       liveCache[cacheKey] = live;
       const cutoff = new Date(); if (is2D) cutoff.setDate(cutoff.getDate() - 2); else cutoff.setDate(cutoff.getDate() - 10);
-      return live.filter(p => p.x >= cutoff);
+      const filtered = live.filter(p => p.x >= cutoff);
+      console.log(`[fetchOne] ${symbol} ${range} fetched ${providerRange}, points: ${live.length} -> ${filtered.length}, start: ${live[0].x.toISOString()}`);
+      return filtered;
     }
     return live || [];
   } else {
@@ -277,7 +284,8 @@ async function updateAllData(force = false) {
         chart.options.scales.x.time.unit = activeRange === '2D' ? 'hour' : activeRange === '10D' ? 'day' : 'month';
         chart.options.scales.x.time.tooltipFormat = (activeRange==='2D'||activeRange==='10D') ? 'MM/dd/yy HH:mm:ss' : 'MM/dd/yy';
         chart.options.scales.x.time.displayFormats = activeRange === '2D' ? { hour: 'MM/dd HH:mm', minute: 'HH:mm:ss', day: 'MMM dd' } : activeRange === '10D' ? { day: 'MMM dd' } : { month: 'MMM yyyy', year: 'yyyy' };
-        updateDynamicTicks(chart, data); chart.update('none'); chart.resetZoom();
+        updateDynamicTicks(chart, data); 
+        chart.resetZoom();
         if (activeRange === '2D') {
           const lastDayStr = getEtDateStr(data[data.length-1].x), dayP = data.filter(p => getEtDateStr(p.x) === lastDayStr);
           if (dayP.length > 0) {
@@ -286,8 +294,15 @@ async function updateAllData(force = false) {
             if (prevDayP.length > 0) { if (dayStart - prevDayP[prevDayP.length-1].x.getTime() > 24*3600*1000) chart.options.scales.x.min = dayStart - 3600*1000; else chart.options.scales.x.min = prevDayP[0].x.getTime(); }
             else chart.options.scales.x.min = dayStart - 3600*1000;
           }
-        } else { chart.options.scales.x.min = undefined; }
-        chart.options.scales.x.max = snapXMax(data[data.length-1].x).getTime(); chart.update('none');
+        } else if (activeRange === '10D') {
+          const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 10);
+          chart.options.scales.x.min = cutoff.getTime();
+        } else { 
+          chart.options.scales.x.min = null; 
+        }
+        chart.options.scales.x.max = snapXMax(data[data.length-1].x).getTime();
+        chart.update('none');
+        rescaleYToVisible(chart, sym);
       }
       const calculationData = (liveCache[`${sym}_5D`] || liveCache[`${sym}_1D`] || data), latest = calculationData[calculationData.length-1];
       let closeP = null; const latestDayET = getEtDateStr(latest.x);
