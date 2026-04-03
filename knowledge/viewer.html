@@ -6,140 +6,222 @@
 <title>Knowledge Viewer</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d0d1a;color:#c0c8e0;font-family:'Segoe UI',sans-serif;font-size:14px;line-height:1.7;padding:32px 48px;max-width:900px;margin:0 auto}
-nav{margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}
-nav a{color:#5577cc;text-decoration:none;font-size:12px;letter-spacing:.5px}
+body{background:#0d0d1a;color:#c0c8e0;font-family:'Segoe UI',sans-serif;font-size:20px;line-height:1.7;padding:40px 60px;max-width:1200px;margin:0 auto}
+nav{margin-bottom:40px;display:flex;justify-content:space-between;align-items:center}
+nav a{color:#5577cc;text-decoration:none;font-size:20px;letter-spacing:.5px;font-weight:600}
 nav a:hover{color:#aabbff}
 #content { opacity: 0; transition: opacity 0.3s; }
 #content.loaded { opacity: 1; }
-h1,h2,h3,h4{color:#9090ee;margin:1.6em 0 .5em;font-weight:500}
-h1{font-size:1.5em;border-bottom:1px solid #1e1e3a;padding-bottom:.4em}
-h2{font-size:1.2em}
-h3{font-size:1em;color:#7788cc}
-p{margin:.7em 0}
-a{color:#5577cc}
-a:hover{color:#aabbff}
-code{background:#141428;color:#aaddaa;padding:1px 5px;border-radius:3px;font-size:.9em}
-pre{background:#0a0a1a;border:1px solid #1e1e3a;border-radius:6px;padding:14px 18px;overflow-x:auto;margin:1em 0}
+h1,h2,h3,h4{color:#9090ee;margin:1.8em 0 .6em;font-weight:600}
+h1{font-size:2.8em;border-bottom:3px solid #1e1e3a;padding-bottom:.4em}
+h2{font-size:2.2em}
+h3{font-size:1.6em;color:#7788cc}
+p{margin:1.2em 0}
+a{color:#5577cc;font-weight:600;text-decoration:none}
+a:hover{color:#aabbff;text-decoration:underline}
+code{background:#141428;color:#aaddaa;padding:2px 6px;border-radius:3px;font-size:.9em}
+pre{background:#0a0a1a;border:1px solid #1e1e3a;border-radius:6px;padding:18px 22px;overflow-x:auto;margin:1.5em 0}
 pre code{background:none;padding:0;font-size:.85em;color:#b0c4b0}
-table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.9em}
-th{background:#141428;color:#8888cc;font-weight:500;text-align:left;padding:8px 12px;border:1px solid #222244}
-td{padding:7px 12px;border:1px solid #1a1a32;vertical-align:top}
+table{border-collapse:collapse;width:100%;margin:1.5em 0;font-size:.9em}
+th{background:#141428;color:#8888cc;font-weight:600;text-align:left;padding:10px 14px;border:1px solid #222244}
+td{padding:10px 14px;border:1px solid #1a1a32;vertical-align:top}
 tr:nth-child(even) td{background:#0f0f22}
-blockquote{border-left:3px solid #334;margin:1em 0;padding:.5em 1em;color:#8899aa}
-hr{border:none;border-top:1px solid #1e1e3a;margin:2em 0}
-ul,ol{padding-left:1.4em;margin:.5em 0}
-li{margin:.2em 0}
+blockquote{border-left:4px solid #334;margin:1.5em 0;padding:.8em 1.5em;color:#8899aa;font-style:italic}
+hr{border:none;border-top:2px solid #1e1e3a;margin:3em 0}
+ul,ol{padding-left:1.8em;margin:1em 0}
+li{margin:.4em 0}
 .error{color:#ff6666;padding:20px;background:#2a1a1a;border-radius:6px;border:1px solid #442222}
+
+/* CSV Preview Table */
+.csv-preview { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; background: #0a0a1a; border: 1px solid #222244; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+.csv-preview th { background: #1a1a35; color: #aaaaff; padding: 8px 10px; text-align: left; border: 1px solid #222244; font-weight: 600; }
+.csv-preview td { padding: 6px 10px; border: 1px solid #1a1a32; color: #a0a0c0; white-space: nowrap; }
+.preview-header { font-size: 13px; color: #7777aa; margin: 15px 0 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+/* Mermaid specific styles */
+.mermaid { background: transparent !important; border: none !important; display: block; margin: 32px 0; text-align: center; }
+.mermaid svg { max-width: 100% !important; height: auto !important; background: none !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 </head>
 <body>
 <nav>
-  <a href="./KNOWLEDGE_MAP.html">← Back to Knowledge Map</a>
-  <span id="file-path" style="font-size: 11px; color: #555577;"></span>
+  <a href="/knowledge/KNOWLEDGE_MAP" style="font-size: 20px">← KNOWLEDGE MAP</a>
+  <span id="file-path" style="font-size: 12px; color: #555577; font-family: monospace;"></span>
 </nav>
 <main id="content">Loading...</main>
 
 <script>
+// Initialize Mermaid
+mermaid.initialize({ 
+    startOnLoad: false, 
+    theme: 'dark', 
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, curve: 'basis' } 
+});
+
+let currentFilePath = '';
+
 async function loadMarkdown() {
-  // Use hash-based routing: viewer.html#/md/path/to.md#anchor
-  const hashStr = window.location.hash || '';
-  if (!hashStr || hashStr === '#') {
-    // Check for legacy ?file= parameter
-    const params = new URLSearchParams(window.location.search);
-    const fileParam = params.get('file');
-    if (fileParam) {
-      window.location.hash = fileParam;
-      return;
+    const hash = window.location.hash || '';
+    if (!hash || hash === '#') {
+        document.getElementById('content').innerHTML = `<div class="error"><h2>No file specified</h2></div>`;
+        return;
     }
-    document.getElementById('content').innerHTML = `<div class="error">
-      <h2>No file specified</h2>
-      <p>Usage: <code>viewer.html#/md/path/to.md</code></p>
-    </div>`;
-    return;
-  }
 
-  // Split file path and internal anchor: #/md/file.md#anchor
-  // Parts after # are: /md/file.md#anchor
-  const parts = hashStr.substring(1).split('#');
-  const file = parts[0];
-  const internalAnchor = parts[1];
+    console.log("[Viewer] Hash change detected:", hash);
 
-  const contentEl = document.getElementById('content');
-  const pathEl = document.getElementById('file-path');
+    // Standardize: remove ## or double slashes
+    let cleanHash = hash.replace(/^#+/, '#').replace(/\/+/g, '/');
+    const hashParts = cleanHash.substring(1).split('#');
+    let filePath = hashParts[0];
+    let fileAnchor = hashParts[1] || '';
 
-  pathEl.textContent = file;
-  document.title = file.split('/').pop() + ' - Knowledge Viewer';
+    // Handle bare anchor jump
+    if (!filePath.startsWith('/md/') && currentFilePath) {
+        fileAnchor = filePath;
+        filePath = currentFilePath;
+    }
 
-  try {
-    // Determine the base path based on whether it's absolute or relative to repo root
-    let fetchPath = file;
-    if (file.startsWith('/md/')) {
-        const repoRelativePath = file.substring(4);
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (isLocal) {
-            fetchPath = '/' + repoRelativePath;
-        } else {
-            fetchPath = '../' + repoRelativePath;
+    // Scroll if only anchor changed
+    if (filePath === currentFilePath && fileAnchor) {
+        scrollToAnchor(fileAnchor);
+        return;
+    }
+
+    if (filePath === currentFilePath && !fileAnchor) return;
+
+    // Guard: never render .html files — redirect to the actual page
+    if (filePath.endsWith('.html')) {
+        window.location.replace('/' + filePath.replace(/^\/md\//, ''));
+        return;
+    }
+
+    currentFilePath = filePath;
+    const contentEl = document.getElementById('content');
+    const pathEl = document.getElementById('file-path');
+    pathEl.textContent = filePath;
+
+    try {
+        let fetchPath = filePath;
+        if (filePath.startsWith('/md/')) {
+            const repoRelativePath = filePath.substring(4);
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            fetchPath = isLocal ? '/' + repoRelativePath : '../' + repoRelativePath;
         }
-    }
 
-    const response = await fetch(fetchPath);
-    if (!response.ok) throw new Error(`Failed to load ${file}: ${response.statusText}`);
-    
-    const markdown = await response.text();
-    contentEl.innerHTML = marked.parse(markdown);
-
-    // Intercept all links in the rendered content
-    contentEl.querySelectorAll('a').forEach(a => {
-      const href = a.getAttribute('href');
-      if (href && !href.startsWith('http')) {
-        let [targetFile, hash] = href.split('#');
+        const response = await fetch(fetchPath);
+        if (!response.ok) throw new Error(`Failed to load ${filePath}: ${response.statusText}`);
+        const markdown = await response.text();
         
-        if (!targetFile || targetFile === '.') {
-          // Internal anchor to the same file
-          // Keep it as #anchor, but update href to include the current file hash
-          a.href = `${window.location.pathname}${window.location.hash.split('#')[0]}#${hash || ''}`;
-          return;
-        }
+        const renderer = new marked.Renderer();
+        renderer.code = function(args) {
+            const text = typeof args === 'object' ? args.text : args;
+            const lang = typeof args === 'object' ? args.lang : arguments[1];
+            return lang === 'mermaid' ? `<div class="mermaid">${text}</div>` : `<pre><code class="language-${lang}">${text}</code></pre>`;
+        };
 
-        // Convert relative or absolute links to viewer.html#/md/ format
-        if (targetFile.startsWith('./')) {
-            const currentDir = file.substring(0, file.lastIndexOf('/'));
-            targetFile = currentDir + '/' + targetFile.substring(2);
-        } else if (!targetFile.startsWith('/')) {
-            const currentDir = file.substring(0, file.lastIndexOf('/'));
-            targetFile = currentDir + '/' + targetFile;
-        }
+        contentEl.innerHTML = marked.parse(markdown, { renderer });
+        contentEl.classList.add('loaded');
+        
+        // Clean persistent Mermaid junk
+        document.querySelectorAll('.mermaidTooltip, .mermaid-tooltip').forEach(t => t.remove());
 
-        if (!targetFile.startsWith('/md/')) {
-            if (targetFile.startsWith('knowledge/')) targetFile = '/md/' + targetFile;
-            else if (!targetFile.startsWith('/')) targetFile = '/md/' + targetFile;
-        }
-
-        a.href = `viewer.html#${targetFile}${hash ? '#' + hash : ''}`;
-      }
-    });
-
-    contentEl.classList.add('loaded');
-
-    // Handle hash scrolling
-    if (internalAnchor) {
-      setTimeout(() => {
-        const target = document.getElementById(internalAnchor) || document.getElementsByName(internalAnchor)[0];
-        if (target) target.scrollIntoView();
-      }, 100);
+        setTimeout(async () => {
+            try { await mermaid.run({ nodes: document.querySelectorAll('.mermaid') }); } catch (e) {}
+            if (fileAnchor) setTimeout(() => scrollToAnchor(fileAnchor), 100);
+        }, 50);
+    } catch (err) {
+        contentEl.innerHTML = `<div class="error"><h2>Error loading document</h2><p>${err.message}</p></div>`;
+        contentEl.classList.add('loaded');
     }
-  } catch (err) {
-    contentEl.innerHTML = `<div class="error">
-      <h2>Error loading document</h2>
-      <p>${err.message}</p>
-      <p>Make sure you are running a local server or viewing on GitHub Pages.</p>
-    </div>`;
-    contentEl.classList.add('loaded');
-  }
 }
+
+function scrollToAnchor(id) {
+    if (!id) return;
+    const target = document.getElementById(id) || document.getElementsByName(id)[0];
+    if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        const slug = id.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const slugTarget = document.getElementById(slug);
+        if (slugTarget) slugTarget.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// GLOBAL CLICK INTERCEPTOR
+document.addEventListener('click', async (e) => {
+    const path = e.composedPath();
+    const a = path.find(el => el.tagName && el.tagName.toLowerCase() === 'a');
+    if (!a) return;
+
+    const hrefAttr = a.getAttribute('href') || a.getAttribute('xlink:href');
+    if (!hrefAttr) return;
+
+    console.log(`[Viewer] Intercepted: ${hrefAttr}`);
+
+    // 1. External Links
+    const isR2 = hrefAttr.includes('pub-ba11062b177640459f72e0a88d0261ae.r2.dev');
+    if (hrefAttr.startsWith('http') && !hrefAttr.includes('viewer.html') && !isR2) return;
+
+    // 2. CSV Preview
+    if (hrefAttr.toLowerCase().endsWith('.csv') || hrefAttr.includes('.csv?')) {
+        e.preventDefault(); e.stopPropagation();
+        const parent = a.closest('p, li, td') || a;
+        let existing = parent.querySelector('.csv-preview-container') || (parent.nextElementSibling && parent.nextElementSibling.classList.contains('csv-preview-container') ? parent.nextElementSibling : null);
+        if (existing) { existing.remove(); return; }
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'csv-preview-container';
+        previewDiv.innerHTML = '<p class="preview-header">Loading preview...</p>';
+        if (a.closest('td')) a.appendChild(previewDiv); else parent.insertAdjacentElement('afterend', previewDiv);
+        try {
+            const resp = await fetch(hrefAttr);
+            const text = await resp.text();
+            const rows = text.trim().split('\n').slice(0, 11).map(r => r.split(','));
+            let html = `<p class="preview-header">Preview: ${hrefAttr.split('/').pop().split('?')[0]}</p>`;
+            html += `<div style="overflow-x:auto"><table class="csv-preview"><thead><tr>${rows[0].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+            previewDiv.innerHTML = html;
+        } catch (err) { previewDiv.innerHTML = `<p style="color:red">Error: ${err.message}</p>`; }
+        return;
+    }
+
+    // 3. Same-page anchor (not a cross-file /md/ path)
+    if (hrefAttr.startsWith('#') && !hrefAttr.startsWith('#/md/')) {
+        e.preventDefault(); e.stopPropagation();
+        window.location.hash = currentFilePath + hrefAttr;
+        return;
+    }
+
+    // 4. Viewer Link (Internal Spec Drill)
+    e.preventDefault();
+    e.stopPropagation();
+
+    let targetHash = '';
+    if (hrefAttr.includes('viewer.html#')) {
+        targetHash = hrefAttr.split('viewer.html')[1];
+    } else if (hrefAttr.startsWith('#/md/')) {
+        targetHash = hrefAttr; // Already a full hash path (e.g. from Mermaid click)
+    } else {
+        // Convert relative to hash
+        const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'));
+        let resolved = '';
+        if (hrefAttr.startsWith('./')) resolved = currentDir + '/' + hrefAttr.substring(2);
+        else if (hrefAttr.startsWith('../')) {
+            let parts = currentFilePath.split('/'); parts.pop();
+            let targetParts = hrefAttr.split('/');
+            while (targetParts[0] === '..') { targetParts.shift(); parts.pop(); }
+            resolved = parts.join('/') + '/' + targetParts.join('/');
+        } else if (hrefAttr.startsWith('/')) resolved = '/md' + hrefAttr;
+        else resolved = currentDir + '/' + hrefAttr;
+        
+        if (!resolved.startsWith('/md/')) resolved = '/md/' + resolved.replace(/^\//, '');
+        targetHash = '#' + resolved.replace(/\/+/g, '/');
+    }
+
+    console.log(`[Viewer] Navigating to: ${targetHash}`);
+    window.location.hash = targetHash;
+}, true);
 
 window.addEventListener('DOMContentLoaded', loadMarkdown);
 window.addEventListener('hashchange', loadMarkdown);
