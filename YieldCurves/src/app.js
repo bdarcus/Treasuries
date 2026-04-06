@@ -14,13 +14,15 @@ const FIDELITY_TIPS_URL = `${R2_BASE_URL}/Treasuries/FidelityTips.csv`;
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 // Compute IQR-based clip bounds from a yield array.
-function iqrClipBounds(source) {
+// minFence: minimum fence size (default 0.5 for yield % data; pass 0 for spread data
+// where values are small and the hard floor would swallow real outliers).
+function iqrClipBounds(source, minFence = 0.5) {
   const sorted = [...source].sort((a, b) => a - b);
   if (sorted.length < 4) return null;
   const q1 = sorted[Math.floor(sorted.length * 0.25)];
   const q3 = sorted[Math.floor(sorted.length * 0.75)];
   const iqr = q3 - q1;
-  const fence = Math.max(1.0 * iqr, 0.5);
+  const fence = Math.max(1.0 * iqr, minFence);
   return { lo: q1 - fence, hi: q3 + fence };
 }
 
@@ -1282,7 +1284,7 @@ function updateModeToggle() {
   }
   const currentMode = spreadModeActive ? 'spread' : 'yield';
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === currentMode));
-  document.getElementById('chartTitle').textContent = currentMode === 'spread' ? 'Bid/Ask Spread' : 'Yield Curve';
+  document.getElementById('chartTitle').textContent = currentMode === 'spread' ? 'Bid/Ask Spreads' : 'Yield Curves';
 }
 
 function switchChartMode(mode) {
@@ -1305,12 +1307,19 @@ function switchChartMode(mode) {
   if (chkFed) {
     const fedLabel = chkFed.closest('label');
     if (isSpread) {
-      chkFed._savedChecked = chkFed.checked;
+      // Only save the original checked state when first entering spread mode.
+      // switchChartMode('spread') is re-called on every tab switch while spread is
+      // active, so we must not overwrite _savedChecked with the already-forced-false
+      // value, or restoration on spread exit will incorrectly leave FedInvest unchecked.
+      if (!chkFed.disabled) {
+        chkFed._savedChecked = chkFed.checked;
+      }
       chkFed.checked = false;
       chkFed.disabled = true;
       if (fedLabel) fedLabel.style.opacity = '0.4';
     } else {
       chkFed.checked = chkFed._savedChecked !== undefined ? chkFed._savedChecked : true;
+      chkFed._savedChecked = undefined;
       chkFed.disabled = false;
       if (fedLabel) fedLabel.style.opacity = '';
     }
@@ -1333,7 +1342,7 @@ function _rescaleSpread(chartInst) {
   chartInst.update('none');
 }
 
-function _makeSpreadChart(ctx, seriesDef, yAxisLabel, yUnit) {
+function _makeSpreadChart(ctx, seriesDef, yAxisLabel, yUnit, shouldClip) {
   const allPoints = seriesDef.flatMap(s => s.data);
   if (allPoints.length === 0) return null;
   const _startDt = parseDateInput(document.getElementById('startMaturity').value);
@@ -1350,11 +1359,11 @@ function _makeSpreadChart(ctx, seriesDef, yAxisLabel, yUnit) {
   const spanMonths = (maxX - minX) / (1000 * 60 * 60 * 24 * 30.5);
   const timeUnit = spanMonths <= 18 ? 'month' : 'year';
 
-  // IQR-clip Y axis to suppress near-maturity outliers
+  // IQR-clip Y axis to suppress near-maturity outliers (respects Clip Outliers checkbox)
   const allY = allPoints.map(d => d.y);
   let yForScale = allY;
-  if (allY.length >= 4) {
-    const clip = iqrClipBounds(allY);
+  if (shouldClip && allY.length >= 4) {
+    const clip = iqrClipBounds(allY, 0);  // no minimum fence — spread values are small-magnitude
     if (clip) {
       const clipped = allY.filter(y => y >= clip.lo && y <= clip.hi);
       if (clipped.length > 0) yForScale = clipped;
@@ -1363,18 +1372,17 @@ function _makeSpreadChart(ctx, seriesDef, yAxisLabel, yUnit) {
   const initBounds = snapYBounds(Math.min(...yForScale), Math.max(...yForScale));
 
   const newChart = new Chart(ctx, {
-    type: 'line',
+    type: 'scatter',
     data: {
       datasets: seriesDef.map(s => ({
         label: s.label, data: s.data,
-        borderColor: s.color, backgroundColor: s.color,
-        borderWidth: s.w, pointRadius: s.r, pointHoverRadius: s.r > 0 ? s.r + 1.5 : 3,
-        tension: 0.1,
+        backgroundColor: s.color,
+        pointRadius: s.r, pointHoverRadius: s.r + 1.5,
       }))
     },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      interaction: { mode: 'nearest', axis: 'xy', intersect: false },
       scales: {
         x: {
           type: 'time', min: minX, max: maxX,
@@ -1424,26 +1432,26 @@ function renderSpreadCharts(bonds, tab) {
   if (tab === 'tips') {
     const valid = bonds.filter(b => !isNaN(b.yieldSpreadBps));
     const validP = bonds.filter(b => !isNaN(b.priceSpreadPct));
-    if (valid.length)  yieldSeries.push({ label: 'Yield Spread', data: valid.map(b => toPt(b, 'yieldSpreadBps')), color: '#1a56db', w: 2, r: 2.5 });
-    if (validP.length) priceSeries.push({ label: 'Price Spread', data: validP.map(b => toPt(b, 'priceSpreadPct')), color: '#059669', w: 2, r: 2.5 });
+    if (valid.length)  yieldSeries.push({ label: 'Yield Spread', data: valid.map(b => toPt(b, 'yieldSpreadBps')), color: '#1a56db', r: 3 });
+    if (validP.length) priceSeries.push({ label: 'Price Spread', data: validP.map(b => toPt(b, 'priceSpreadPct')), color: '#059669', r: 3 });
   } else {
-    // r: 0 — no dots for dense Treasury series; lines only to avoid clumping
     const types = [
-      { type: 'MARKET BASED BILL',  label: 'Bills',  yc: '#0ea5e9', pc: '#38bdf8', w: 1.5, r: 0 },
-      { type: 'MARKET BASED NOTE',  label: 'Notes',  yc: '#1a56db', pc: '#60a5fa', w: 2,   r: 0 },
-      { type: 'MARKET BASED BOND',  label: 'Bonds',  yc: '#7c3aed', pc: '#a78bfa', w: 2,   r: 0 },
-      { type: 'MARKET BASED STRIP', label: 'STRIPS', yc: '#64748b', pc: '#94a3b8', w: 1.5, r: 2 },
+      { type: 'MARKET BASED BILL',  label: 'Bills',  yc: '#0ea5e9', pc: '#38bdf8', r: 2.5 },
+      { type: 'MARKET BASED NOTE',  label: 'Notes',  yc: '#1a56db', pc: '#60a5fa', r: 2.5 },
+      { type: 'MARKET BASED BOND',  label: 'Bonds',  yc: '#7c3aed', pc: '#a78bfa', r: 2.5 },
+      { type: 'MARKET BASED STRIP', label: 'STRIPS', yc: '#64748b', pc: '#94a3b8', r: 2   },
     ];
-    for (const { type, label, yc, pc, w, r } of types) {
+    for (const { type, label, yc, pc, r } of types) {
       const yb = bonds.filter(b => b.type === type && !isNaN(b.yieldSpreadBps));
       const pb = bonds.filter(b => b.type === type && !isNaN(b.priceSpreadPct));
-      if (yb.length) yieldSeries.push({ label, data: yb.map(b => toPt(b, 'yieldSpreadBps')), color: yc, w, r });
-      if (pb.length) priceSeries.push({ label, data: pb.map(b => toPt(b, 'priceSpreadPct')), color: pc, w, r });
+      if (yb.length) yieldSeries.push({ label, data: yb.map(b => toPt(b, 'yieldSpreadBps')), color: yc, r });
+      if (pb.length) priceSeries.push({ label, data: pb.map(b => toPt(b, 'priceSpreadPct')), color: pc, r });
     }
   }
 
-  spreadChart1 = _makeSpreadChart(ctx1, yieldSeries, 'Yield Spread (bps)', ' bps');
-  spreadChart2 = _makeSpreadChart(ctx2, priceSeries, 'Price Spread (%)', '%');
+  const shouldClip = tab === 'tips' ? true : nominalsClipOutliers;
+  spreadChart1 = _makeSpreadChart(ctx1, yieldSeries, 'Yield Spread (bps)', ' bps', shouldClip);
+  spreadChart2 = _makeSpreadChart(ctx2, priceSeries, 'Price Spread (%)', '%', shouldClip);
 
   // Wire axis-aware wheel zoom (mirrors yield curve chart behaviour)
   if (spreadChart1) setupAxisWheelZoom(document.getElementById('spreadYieldChart'), ({ chart }) => _rescaleSpread(chart), ({ chart, factor }) => snapYAfterZoom(chart, factor));
