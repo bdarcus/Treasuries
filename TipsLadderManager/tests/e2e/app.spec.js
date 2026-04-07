@@ -15,8 +15,8 @@ const csv = name => readFileSync(path.join(FIXTURES, name), 'utf8');
 const HOLDINGS_PATH = path.join(ROOT, 'tests', 'CusipQtyTestLumpy.csv');
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/Treasuries/Yields.csv', r =>
-    r.fulfill({ body: csv('Yields.csv'), contentType: 'text/csv' }));
+  await page.route('**/Treasuries/YieldsDerivedFromFedInvestPrices.csv', r =>
+    r.fulfill({ body: csv('YieldsDerivedFromFedInvestPrices.csv'), contentType: 'text/csv' }));
   await page.route('**/Treasuries/RefCPI.csv', r =>
     r.fulfill({ body: csv('RefCPI.csv'), contentType: 'text/csv' }));
   await page.route('**/Treasuries/TipsRef.csv', r =>
