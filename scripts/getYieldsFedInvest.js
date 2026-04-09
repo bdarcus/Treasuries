@@ -12,7 +12,7 @@ if (existsSync(_envPath)) {
 
 // Fetch Treasury prices from FedInvest, merge TIPS with TipsRef.csv metadata, calculate yields.
 // Types written: TIPS, MARKET BASED BILL, MARKET BASED NOTE, MARKET BASED BOND (excludes FRN).
-// Writes YieldsDerivedFromFedInvestPrices.csv to R2: row 1 = settlement date, row 2 = header, rows 3+ = data.
+// Writes YieldsFromFedInvestPrices.csv to R2: row 1 = settlement date, row 2 = header, rows 3+ = data.
 //
 // Usage: node getYieldsFedInvest.js
 // Prices published once daily at ~1pm ET on FedInvest; scheduled job runs at 18:05 UTC
@@ -325,9 +325,8 @@ async function main() {
   );
   const content = [settleDateStr, header, ...lines].join('\n') + '\n';
   
-  await uploadToR2('Treasuries/Yields.csv', content);
-  await uploadToR2('Treasuries/YieldsDerivedFromFedInvestPrices.csv', content);
-  await uploadToR2('TIPS/YieldsDerivedFromFedInvestPrices.csv', content);
+  await uploadToR2('Treasuries/YieldsFromFedInvestPrices.csv', content);
+  await uploadToR2('TIPS/YieldsFromFedInvestPrices.csv', content);
 
   const typeCounts = rows.reduce((acc, r) => { acc[r.type] = (acc[r.type] || 0) + 1; return acc; }, {});
   for (const [type, count] of Object.entries(typeCounts)) console.error(`  ${type}: ${count}`);

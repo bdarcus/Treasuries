@@ -42,13 +42,16 @@
 ## 2.0 Data Stores (S)
 *Internal R2 data files. Schemas are normalized from External Entities.*
 
-- <a id="s1"></a>**S1: Yields.csv** = `Settlement_Date + { @CUSIP + Type + Maturity + Coupon + DatedDateCPI + Price + Yield }`
-  *Primary R2 key for daily FedInvest prices and yields. Legacy alias: `YieldsDerivedFromFedInvestPrices.csv`.*
+- <a id="s1"></a>**S1: YieldsFromFedInvestPrices.csv** = `Settlement_Date + { @CUSIP + Type + Maturity + Coupon + DatedDateCPI + Price + Yield }`
+  *Primary R2 key for daily FedInvest prices and yields. Legacy alias: `YieldsDerivedFromFedInvestPrices.csv`, `Yields.csv`.*
 - <a id="s2"></a>**S2: TipsRef.csv** = `{ @CUSIP + Maturity + DatedDate + Coupon + BaseCPI + Term }`
 - <a id="s3"></a>**S3: RefCPI.csv** = `{ @Date + Ref_CPI }`
 - <a id="s4"></a>**S4: RefCpiNsaSa.csv** = `{ @Date + CPI_NSA + CPI_SA + SA_Factor }`
 - <a id="s5"></a>**S5: Auctions.csv** = `{ @CUSIP + @Auction_Date + Security_Type + High_Yield + Bid_to_Cover + Primary_Dealer_Accepted + ... }`
 - <a id="s6"></a>**S6: YieldHistory** = `{ @Symbol + { [ Timestamp + Yield_Value ] } }`
+- <a id="s8"></a>**S8: CPI_history.csv** = `{ @Year + @Period + PeriodName + NSA + SA }`
+  *Full monthly BLS CPI-U history from January 1913 to present. NSA = `CUUR0000SA0`; SA = `CUSR0000SA0`. SA blank before 1947. R2 key: `bls/CPI_history.csv`.*
+
 - <a id="s7a"></a>**S7a: FidelityTips.csv** — TIPS bid/ask quotes. Local drop path: `YieldCurves/data/FidelityTips.csv` (gitignored). R2 key: `Treasuries/FidelityTips.csv`.
   CSV columns (exact header names): `Cusip, State, Description, Coupon, Maturity Date, Moody's Rating, S&P Rating, Price Bid, Price Ask, Yield Bid, Ask Yield to Worst, Ask Yield to Maturity, Inflation Factor, Adjusted Price Bid, Adjusted Price Ask, Attributes`
   *Parser normalises headers to lowercase. Key fields used: `cusip`, `price ask` (ask clean real price), `price bid` (bid clean real price), `inflation factor`, `adjusted price bid`, `adjusted price ask`. Bid yield is computed from `price bid` via `yieldFromPrice` (not from `yield bid`) to ensure consistency with ask yield method. Price spread uses adjusted prices (actual dollar cost). Footer line `Date downloaded MM/DD/YYYY HH:MM AM/PM` supplies the download timestamp.*
@@ -118,6 +121,34 @@
 <a id="treasury-bond"></a>
 ### Treasury Bond
 `Treasury_Bond` = *U.S. Treasury security with original maturity > 10 years. Pays semi-annual coupons. Typical maturities: 20, 30 Year.*
+
+<a id="cpi-nsa"></a>
+### CPI-U NSA
+`CPI_NSA` = *Consumer Price Index for All Urban Consumers, Not Seasonally Adjusted (BLS series `CUUR0000SA0`). The reference index used for TIPS principal adjustments per 31 CFR § 356.*
+
+<a id="cpi-sa"></a>
+### CPI-U SA
+`CPI_SA` = *Consumer Price Index for All Urban Consumers, Seasonally Adjusted (BLS series `CUSR0000SA0`). Strips predictable seasonal patterns to expose underlying inflation trend.*
+
+<a id="cpi-change-p2p"></a>
+### CPI Change (Point-to-Point)
+`CPI_Change_P2P` = `(CPI[end] / CPI[start] − 1) × 100` *(Total percent change in CPI between two user-specified dates)*
+
+<a id="cpi-change-yoy"></a>
+### CPI Change (Year-over-Year)
+`CPI_Change_YoY` = `(CPI[t] / CPI[t − 12 months] − 1) × 100` *(Annual inflation rate: percent change vs. same month prior year)*
+
+<a id="cpi-change-mom"></a>
+### CPI Change (Month-over-Month)
+`CPI_Change_MoM` = `(CPI[t] / CPI[t − 1 month] − 1) × 100` *(Monthly inflation rate: percent change vs. prior month)*
+
+<a id="rolling-cpi-change"></a>
+### Rolling CPI Change
+`Rolling_CPI_Change` = `(CPI[t] / CPI[t − N months] − 1) × 100` for each t *(Continuous series of trailing N-month total percent change. N is user-specified.)*
+
+<a id="cpi-cagr"></a>
+### CPI CAGR
+`CPI_CAGR` = `((CPI[end] / CPI[start])^(12 / N_months) − 1) × 100` *(Compound Annual Growth Rate over N months. Annualizes the point-to-point change.)*
 
 ---
 

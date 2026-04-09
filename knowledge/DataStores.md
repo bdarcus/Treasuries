@@ -4,7 +4,7 @@ This document provides the technical schemas and field-level specifications for 
 
 ---
 
-## <a id="s1"></a>S1: YieldsDerivedFromFedInvestPrices.csv
+## <a id="s1"></a>S1: YieldsFromFedInvestPrices.csv
 **Description**: Daily Treasury settlement prices and derived Yield-to-Maturity (YTM).
 **Update Frequency**: Weekdays ~1:05 PM ET.
 
@@ -19,7 +19,7 @@ This document provides the technical schemas and field-level specifications for 
 | `Price` | Number | The raw price provided by the source. |
 | `Yield` | Number | The computed real YTM (Excel YIELD convention). |
 
-**Live Data**: [View Preview (Toggles Table)](https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/Treasuries/YieldsDerivedFromFedInvestPrices.csv)
+**Live Data**: [View Preview (Toggles Table)](https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/Treasuries/YieldsFromFedInvestPrices.csv)
 
 ---
 
@@ -95,3 +95,22 @@ This document provides the technical schemas and field-level specifications for 
 **Fields**: `CUSIP`, `Maturity`, `Coupon`, `Ask_Price`, `Bid_Price`, `Ask_Yield`, `Bid_Yield`.
 
 **Live Sample**: [View FidelityTreasuries.csv](https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/Treasuries/FidelityTreasuries.csv)
+
+---
+
+## <a id="s8"></a>S8: CPI_history.csv
+**Description**: Full monthly BLS CPI-U history (NSA and SA) from January 1913 to present.
+**Update Frequency**: Monthly (on BLS release).
+**R2 Key**: `bls/CPI_history.csv`
+
+| Field | Type | Description |
+|---|---|---|
+| `Year` | String | 4-digit year (e.g., `"1913"`) |
+| `Period` | String | BLS period code (e.g., `"M01"` = January) |
+| `PeriodName` | String | Full month name (e.g., `"January"`) |
+| `NSA` | Number | CPI-U Not Seasonally Adjusted ([E4](./DATA_DICTIONARY.md#e4) series `CUUR0000SA0`) |
+| `SA` | Number | CPI-U Seasonally Adjusted ([E4](./DATA_DICTIONARY.md#e4) series `CUSR0000SA0`). Blank for periods before January 1947. |
+
+**Sort order**: Ascending by Year, then Period (oldest row first).
+
+**Live Data**: [View Preview](https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/bls/CPI_history.csv)

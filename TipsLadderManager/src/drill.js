@@ -484,39 +484,36 @@ export function buildRefCpiDrill(d, complexity = 'quant', refCpiRows = null) {
   return rows;
 }
 
-function renderDurationBeam(lowerDur, upperDur, avgDur, lowerWeight, upperWeight, lowerLabel, upperLabel) {
-  const min = Math.floor(lowerDur) - 1;
-  const max = Math.ceil(upperDur) + 1;
+function renderDurationBeam(buckets, avgDur) {
+  const durs = buckets.map(b => b.dur);
+  const min = Math.floor(Math.min(...durs, avgDur)) - 1;
+  const max = Math.ceil(Math.max(...durs, avgDur)) + 1;
   const range = max - min;
   const px = d => ((d - min) / range) * 100;
 
-  const lp = px(lowerDur), up = px(upperDur), ap = px(avgDur);
-  const lw = Math.round(lowerWeight * 100), uw = Math.round(upperWeight * 100);
+  const ap = px(avgDur);
 
-  return '<div style="margin:16px 0 8px;padding:24px 10px 32px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;position:relative;user-select:none;">'
-    + '<div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Duration Balance (Mod. Duration)</div>'
-    // Beam
+  let bucketHtml = '';
+  buckets.forEach(b => {
+    const p = px(b.dur);
+    const w = Math.round(b.weight * 100);
+    bucketHtml += 
+      '<div style="position:absolute;top:-24px;left:' + p + '%;transform:translateX(-50%);text-align:center;">'
+        + '<div style="font-weight:700;color:#1a56db">' + w + '%</div>'
+        + '<div style="font-size:9px;color:#64748b">' + b.label + '</div>'
+        + '<div style="width:2px;height:24px;background:#3b82f6;margin:2px auto 0;opacity:0.4;"></div>'
+      + '</div>';
+  });
+
+  return '<div style="margin:0 0 8px;padding:32px 10px 32px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;position:relative;user-select:none;">'
     + '<div style="height:4px;background:#cbd5e1;border-radius:2px;position:relative;margin:0 20px;">'
-      // Tick marks
       + [min, max].map(v => '<div style="position:absolute;top:8px;left:' + px(v) + '%;transform:translateX(-50%);font-size:9px;color:#94a3b8">' + v + 'y</div>').join('')
-      // Fulcrum (Avg Duration)
-      + '<div style="position:absolute;top:-2px;left:' + ap + '%;width:12px;height:12px;background:#1e293b;transform:translate(-50%, -50%) rotate(45deg);z-index:1;" title="Fulcrum: Gap Avg Duration (' + avgDur.toFixed(2) + 'y)"></div>'
+      + '<div style="position:absolute;top:-2px;left:' + ap + '%;width:12px;height:12px;background:#1e293b;transform:translate(-50%, -50%) rotate(45deg);z-index:1;" title="Fulcrum: Avg Duration (' + avgDur.toFixed(2) + 'y)"></div>'
       + '<div style="position:absolute;top:12px;left:' + ap + '%;transform:translateX(-50%);text-align:center;white-space:nowrap;">'
         + '<div style="font-weight:700;color:#1e293b">' + avgDur.toFixed(2) + 'y</div>'
-        + '<div style="font-size:9px;color:#64748b">Gap Avg</div>'
+        + '<div style="font-size:9px;color:#64748b">Average</div>'
       + '</div>'
-      // Lower Weight
-      + '<div style="position:absolute;top:-24px;left:' + lp + '%;transform:translateX(-50%);text-align:center;">'
-        + '<div style="font-weight:700;color:#1a56db">' + lw + '%</div>'
-        + '<div style="font-size:9px;color:#64748b">' + lowerLabel + '</div>'
-        + '<div style="width:2px;height:24px;background:#3b82f6;margin:2px auto 0;opacity:0.4;"></div>'
-      + '</div>'
-      // Upper Weight
-      + '<div style="position:absolute;top:-24px;left:' + up + '%;transform:translateX(-50%);text-align:center;">'
-        + '<div style="font-weight:700;color:#1a56db">' + uw + '%</div>'
-        + '<div style="font-size:9px;color:#64748b">' + upperLabel + '</div>'
-        + '<div style="width:2px;height:24px;background:#3b82f6;margin:2px auto 0;opacity:0.4;"></div>'
-      + '</div>'
+      + bucketHtml
     + '</div>'
     + '</div>';
 }
@@ -527,94 +524,89 @@ export function buildDurationPopupRows(summary, mode) {
   }
   const lowerYear  = mode === 'rebal' ? summary.brackets.lowerYear  : summary.lowerYear;
   const upperYear  = mode === 'rebal' ? summary.brackets.upperYear  : summary.upperYear;
-  const lowerLabel = mode === 'build'
-    ? summary.lowerMonth + ' ' + lowerYear : String(lowerYear);
-  const upperLabel = mode === 'build'
-    ? summary.upperMonth + ' ' + upperYear : String(upperYear);
+  const lowerLabel = mode === 'build' ? summary.lowerMonth + ' ' + lowerYear : String(lowerYear);
+  const upperLabel = mode === 'build' ? summary.upperMonth + ' ' + upperYear : String(upperYear);
+  
   const { lowerDuration, upperDuration, lowerWeight, upperWeight, gapParams } = summary;
   const is3 = mode === 'rebal' && summary.bracketMode === '3bracket' && summary.newLowerCUSIP;
+  const avg = gapParams.avgDuration;
 
-  let rows = [];
+  const rows = [
+    { label: 'Gap average duration', value: avg.toFixed(2) + ' yr' },
+    { sep: true },
+  ];
 
+  if (gapParams.breakdown?.length) {
+    rows.push({ heading: 'Gap Year Durations' });
+    const durSum = gapParams.breakdown.reduce((s, b) => s + (b.dur ?? 0), 0);
+    gapParams.breakdown.forEach(b => {
+      rows.push({ label: b.year + ' (Feb 15)', note: 'mod. duration (interpolated)', value: b.dur != null ? b.dur.toFixed(2) + ' yr' : '\u2014' });
+    });
+    rows.push({ label: 'Avg (' + durSum.toFixed(2) + ' \u00f7 ' + gapParams.breakdown.length + ')', value: avg.toFixed(2) + ' yr', total: true });
+    rows.push({ sep: true });
+  }
+
+  const buckets = [];
   if (is3) {
     const { newLowerYear, newLowerDuration, origLowerWeight, newLowerWeight3 } = summary;
     const w1 = (origLowerWeight ?? 0), w2 = (newLowerWeight3 ?? 0), w3 = (summary.upperWeight3 ?? summary.upperWeight ?? 0);
     const fellBack = !!summary.bracketFellBack3to2;
-    const match = w1.toFixed(4) + ' \u00d7 ' + lowerDuration.toFixed(2)
-                + ' + ' + w2.toFixed(4) + ' \u00d7 ' + newLowerDuration.toFixed(2)
-                + ' + ' + w3.toFixed(4) + ' \u00d7 ' + upperDuration.toFixed(2)
-                + ' = ' + gapParams.avgDuration.toFixed(2);
-    rows = [
-      { label: 'Gap avg duration', value: gapParams.avgDuration.toFixed(2) + ' yr' },
-      { label: 'Gap years',        value: (summary.gapYears || []).join(', ') || '—' },
-      { sep: true },
+    
+    rows.push(
       { label: 'Orig lower (' + lowerYear + ')',    note: 'mod. duration', value: lowerDuration.toFixed(2) + ' yr' },
       { label: 'New lower (' + newLowerYear + ')',  note: 'mod. duration', value: newLowerDuration.toFixed(2) + ' yr' },
       { label: 'Upper (' + upperYear + ')',         note: 'mod. duration', value: upperDuration.toFixed(2) + ' yr' },
       { sep: true },
       { label: 'Orig lower weight', note: fellBack ? '2-bracket formula (fell back)' : 'current excess / gap total cost (fixed)', value: w1.toFixed(4) },
       { label: 'New lower weight',  note: fellBack ? 'n/a (fell back to 2-bracket)'  : 'solved from duration constraint',         value: w2.toFixed(4) },
-      { label: 'Upper weight',      note: fellBack ? '2-bracket formula (fell back)'  : '1 − w1 − w2',                            value: w3.toFixed(4) },
-      { sep: true },
-      { label: 'Duration match', note: match, total: true },
-      ...(fellBack ? [{ sep: true }, { label: '2-bracket fallback', note: 'Orig lower excess exceeded gap cost (w1 > 1). Sold orig lower to 2-bracket target; no new lower bought.' }] : []),
-    ];
+      { label: 'Upper weight',      note: fellBack ? '2-bracket formula (fell back)'  : '1 \u2212 w1 \u2212 w2',                            value: w3.toFixed(4) }
+    );
+    buckets.push({ dur: lowerDuration, weight: w1, label: String(lowerYear) });
+    if (!fellBack) buckets.push({ dur: newLowerDuration, weight: w2, label: String(newLowerYear) });
+    buckets.push({ dur: upperDuration, weight: w3, label: String(upperYear) });
+
+    const match = w1.toFixed(4) + ' \u00d7 ' + lowerDuration.toFixed(2)
+                + (fellBack ? '' : ' + ' + w2.toFixed(4) + ' \u00d7 ' + newLowerDuration.toFixed(2))
+                + ' + ' + w3.toFixed(4) + ' \u00d7 ' + upperDuration.toFixed(2)
+                + ' = ' + avg.toFixed(2);
+    rows.push({ sep: true }, { label: 'Duration match', note: match, total: true });
+    if (fellBack) rows.push({ sep: true }, { label: '2-bracket fallback', note: 'Orig lower excess exceeded gap cost (w1 > 1). Sold orig lower to 2-bracket target; no new lower bought.' });
+
   } else {
-    const wFml = '(upper dur − avg dur) / (upper dur − lower dur)';
-    const match = lowerWeight.toFixed(4) + ' × ' + lowerDuration.toFixed(2)
-                + ' + ' + upperWeight.toFixed(4) + ' × ' + upperDuration.toFixed(2)
-                + ' = ' + gapParams.avgDuration.toFixed(2);
-    rows = [
-      { label: 'Gap avg duration', value: gapParams.avgDuration.toFixed(2) + ' yr' },
-      { label: 'Gap years',        value: (summary.gapYears || []).join(', ') || '—' },
-      { sep: true },
+    const wFml = '(upper dur \u2212 avg dur) / (upper dur \u2212 lower dur)';
+    rows.push(
       { label: 'Lower bracket (' + lowerLabel + ')', note: 'mod. duration', value: lowerDuration.toFixed(2) + ' yr' },
       { label: 'Upper bracket (' + upperLabel + ')', note: 'mod. duration', value: upperDuration.toFixed(2) + ' yr' },
       { sep: true },
-      { label: 'Lower weight', note: wFml, value: lowerWeight.toFixed(4) },
-      { label: 'Upper weight', note: '1 \u2212 lower weight', value: upperWeight.toFixed(4) },
-      { sep: true },
-      { label: 'Duration match', note: match, total: true },
-      { html: renderDurationBeam(lowerDuration, upperDuration, gapParams.avgDuration, lowerWeight, upperWeight, lowerLabel, upperLabel) },
-      ];
+      { label: 'Lower weight', note: wFml,                    value: lowerWeight.toFixed(4) },
+      { label: 'Upper weight', note: '1 \u2212 lower weight', value: upperWeight.toFixed(4) }
+    );
+    buckets.push({ dur: lowerDuration, weight: lowerWeight, label: lowerLabel });
+    buckets.push({ dur: upperDuration, weight: upperWeight, label: upperLabel });
 
+    const match = lowerWeight.toFixed(4) + ' \u00d7 ' + lowerDuration.toFixed(2)
+                + ' + ' + upperWeight.toFixed(4) + ' \u00d7 ' + upperDuration.toFixed(2)
+                + ' = ' + avg.toFixed(2);
+    rows.push({ sep: true }, { label: 'Duration match', note: match, total: true });
   }
 
-  // Excess Balance Check (Rebalance only)
-  if (typeof summary.gapCoverageSurplus === 'number') {
-    const s = summary.gapCoverageSurplus;
-    const surplusLbl = s >= 0 ? 'Surplus' : 'Deficit';
-    const surplusVal = (s >= 0 ? '+' : '') + Math.round(s).toLocaleString('en-US');
-    const isFull = summary.method === 'Full';
+  rows.push(
+    { sep: true },
+    { heading: 'Duration Balance (Mod. Duration)' },
+    { html: renderDurationBeam(buckets, avg) }
+  );
 
-    rows.push(
-      { sep: true },
-      { heading: 'Excess Balance Check (Historical)' },
-      { label: 'Previous excess $',  note: 'real cost of bracket excess bonds held before rebalance', value: '$' + Math.round(summary.totalCurrentExcess).toLocaleString() },
-      { label: 'Rebal rungs cost',  note: 'cost to fill newly available years', value: '$' + Math.round(summary.costForNewRungs).toLocaleString() },
-      { label: 'Future gap cost',   note: 'theoretical cost to cover remaining gaps', value: '$' + Math.round(summary.gapParams.totalCost).toLocaleString() },
-      { label: 'Gap coverage ' + surplusLbl.toLowerCase(),
-        note: s < 0
-          ? (isFull ? 'Previous excess was insufficient; shortfall was covered by total portfolio cash.' : 'Previous excess was insufficient; new cash or lower DARA required.')
-          : 'Previous excess was sufficient to cover these requirements.',
-        value: surplusVal, total: true }
-    );
-
-    const gapRows = [];
-    if (summary.gapParams?.breakdown) {
-      summary.gapParams.breakdown.forEach(g => {
-        gapRows.push({ label: g.year + ' theoretical cost', note: 'round(' + Math.round(summary.DARA) + ' \u2212 ' + Math.round(g.laterMatInt) + ') \u00f7 ' + g.piPerBond.toFixed(2) + ' \u2192 ' + g.qty + ' units \xd7 $1,000', value: '$' + (g.qty * 1000).toLocaleString() });
-      });
+  if (gapParams.breakdown?.length) {
+    rows.push({ sep: true }, { heading: 'Gap Year Breakdown (theoretical qty)' });
+    gapParams.breakdown.forEach(g => {
+      rows.push({ label: g.year + ' qty', note: 'round((DARA \u2212 ' + Math.round(g.laterMatInt) + ') \u00f7 ' + g.piPerBond.toFixed(2) + ')', value: String(g.qty) });
+    });
+    rows.push({ label: 'Future gap cost (Total)', note: 'Sum of individual gap theoretical costs', value: '$' + Math.round(gapParams.totalCost).toLocaleString(), total: true });
+    const totalEx = summary.totalExcessCostReal || summary.totalExcessCost;
+    if (totalEx) {
+      rows.push({ label: 'Total excess cost', note: 'real cost of excess bonds now held in brackets', value: '$' + Math.round(totalEx).toLocaleString() });
+      rows.push({ label: 'Coverage status',   note: 'Gap is fully funded by the new bracket excess', value: 'Fully Funded', total: true });
     }
-
-    rows.push(
-      { sep: true },
-      { heading: 'New Ladder Coverage' },
-      ...gapRows,
-      { label: 'Future gap cost (Total)', note: 'Sum of individual gap theoretical costs', value: '$' + Math.round(summary.gapParams?.totalCost ?? 0).toLocaleString(), total: true },
-      { label: 'Total excess cost', note: 'real cost of excess bonds now held in brackets', value: '$' + Math.round(summary.totalExcessCostReal || summary.totalExcessCost).toLocaleString() },
-      { label: 'Coverage status',   note: 'Gap is fully funded by the new bracket excess', value: 'Fully Funded', total: true }
-    );
   }
 
   return rows;
@@ -636,7 +628,7 @@ export function buildFutureDurationPopupRows(summary) {
               + ' = ' + avg.toFixed(2);
 
   const rows = [
-    { label: 'Future avg duration', value: avg.toFixed(2) + ' yr' },
+    { label: 'Future average duration', value: avg.toFixed(2) + ' yr' },
     { sep: true },
   ];
 
@@ -658,7 +650,12 @@ export function buildFutureDurationPopupRows(summary) {
     { label: 'Upper weight', note: '1 \u2212 lower weight', value: futureUpperWeight.toFixed(4) },
     { sep: true },
     { label: 'Duration match', note: match, total: true },
-    { html: renderDurationBeam(futureLowerDuration, futureUpperDuration, avg, futureLowerWeight, futureUpperWeight, lowerLabel, upperLabel) },
+    { sep: true },
+    { heading: 'Duration Balance (Mod. Duration)' },
+    { html: renderDurationBeam([
+        { dur: futureLowerDuration, weight: futureLowerWeight, label: lowerLabel },
+        { dur: futureUpperDuration, weight: futureUpperWeight, label: upperLabel }
+      ], avg) },
   );
 
   if (futureFellBack) {
@@ -668,7 +665,7 @@ export function buildFutureDurationPopupRows(summary) {
   if (futureParams.breakdown?.length) {
     rows.push({ sep: true }, { heading: 'Future Year Breakdown (hypothetical qty)' });
     futureParams.breakdown.forEach(b => {
-      rows.push({ label: b.year + ' qty', note: 'round(DARA \u2212 ' + Math.round(b.laterMatInt) + ') \u00f7 ' + b.piPerBond.toFixed(2) + ' \u2192 ' + b.qty + ' units', value: String(b.qty) });
+      rows.push({ label: b.year + ' qty', note: 'round((DARA \u2212 ' + Math.round(b.laterMatInt) + ') \u00f7 ' + b.piPerBond.toFixed(2) + ')', value: String(b.qty) });
     });
     rows.push({ label: 'Total future cost', value: '$' + Math.round(futureParams.futureTotalCost).toLocaleString(), total: true });
   }

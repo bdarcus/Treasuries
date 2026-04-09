@@ -51,17 +51,18 @@ Adhere to the following variable mappings:
 - `indexRatio`: `refCPI / baseCPI`.
 
 ### 4. Testing & Validation
-- **Regression Tests**: Run `npm test` to execute the Node.js regression suite (`tests/run.js`). This verifies that refactors do not change the mathematical output for known holdings.
-- **E2E Tests**: Run `npm run test:e2e` for Playwright-based browser tests.
+- **STOP ON FAIL (MANDATORY)**: If any test fails, stop immediately and debug.
+- **Regression Tests**: Run `node tests/run.js`. (DO NOT use `npm test`).
+- **E2E Tests**: Run `cmd /c "npm run test:e2e -- --max-failures=1"`.
 - **Verification**: After any logic change, ensure the "After ARA" in the UI still approximates the target DARA within rounding limits (~$1).
 
 ---
 
-## Key Commands
-- **Run Locally**: `npx serve .` (Open `index.html` in a browser).
-- **Run Tests**: `npm test`
-- **E2E Tests**: `npx playwright test`
-- **Update Data (Local)**: `node scripts/getTipsYields.js` (Requires environment variables for S3/R2 if uploading).
+## Key Commands (Win32 Standards)
+- **Run Locally**: `node ..\node_modules\serve\bin\serve.js .. -p 8080` (Run from root or use correct relative path).
+- **Regression Tests**: `node tests/run.js`
+- **E2E Tests**: `cmd /c "npm run test:e2e -- --max-failures=1"`
+- **Update Data**: `node scripts/getYieldsFedInvest.js` (Run from root).
 
 ---
 

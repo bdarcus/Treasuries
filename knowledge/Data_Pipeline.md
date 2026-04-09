@@ -28,10 +28,11 @@ These jobs are the primary ingestion engine. They run on the owner's machine via
 
 | Task Name | Schedule | Script | Primary Output |
 |---|---|---|---|
-| **FedInvest Download** | Weekdays 1:05pm ET | `scripts/getYieldsFedInvest.js` | `YieldsDerivedFromFedInvestPrices.csv` |
+| **FedInvest Download** | Weekdays 1:05pm ET | `scripts/getYieldsFedInvest.js` | `YieldsFromFedInvestPrices.csv` |
 | **Fidelity Quotes** | 3× Daily | *(Windows Task)* | `FidelityTreasuries.csv` |
 | **CPI Refresh** | Monthly (Release Day) | `scripts/fetchRefCpi.js` | `RefCPI.csv` |
 | **SA Factor Update** | Daily 6:35am | `YieldCurves/scripts/updateRefCpi.js` | `RefCpiNsaSa.csv` |
+| **CPI History Refresh** | Monthly (Release Day) | `scripts/fetchCpiHistory.js` | `bls/CPI_history.csv` |
 
 ### [CLOUD] Active GitHub Actions
 These jobs still run on GitHub's infrastructure.

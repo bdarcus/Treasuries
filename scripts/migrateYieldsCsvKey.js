@@ -1,4 +1,4 @@
-// One-shot: copies Treasuries/Yields.csv → Treasuries/YieldsDerivedFromFedInvestPrices.csv in R2.
+// One-shot: copies Treasuries/Yields.csv → Treasuries/YieldsFromFedInvestPrices.csv in R2.
 // Run once to unblock apps after the rename. Then run deleteOldYieldsCsv.js when ready.
 // Usage: node scripts/migrateYieldsCsvKey.js
 
@@ -19,7 +19,7 @@ const s3 = new S3Client({
 });
 
 const OLD_KEY = 'Treasuries/Yields.csv';
-const NEW_KEY = 'Treasuries/YieldsDerivedFromFedInvestPrices.csv';
+const NEW_KEY = 'Treasuries/YieldsFromFedInvestPrices.csv';
 
 const res = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: OLD_KEY }));
 const body = await res.Body.transformToString();

@@ -226,7 +226,8 @@ function calculateGapParameters(gapYears, settlementDate, refCPI, tipsMap, DARA,
     const syntheticYield = interpolateYield(anchorBefore, { maturity: anchorAfter.maturity, yield: anchorAfter.yield }, syntheticMat);
     const synCpn = syntheticCoupon(syntheticYield);
 
-    totalDuration += calculateMDuration(settlementDate, syntheticMat, synCpn, syntheticYield);
+    const synDur = calculateMDuration(settlementDate, syntheticMat, synCpn, syntheticYield);
+    totalDuration += synDur;
 
     let sumLaterMaturityInterest = 0;
     for (const futYear in gapLaterMaturityInterest) {
@@ -239,7 +240,7 @@ function calculateGapParameters(gapYears, settlementDate, refCPI, tipsMap, DARA,
     // Gap total cost is the sum of market costs of all gap years.
     // For synthetic TIPS, price is 100 since we're interpolating yields.
     totalCost += qty * 1000; 
-    breakdown.push({ year, qty, piPerBond, laterMatInt: sumLaterMaturityInterest });
+    breakdown.push({ year, qty, piPerBond, laterMatInt: sumLaterMaturityInterest, dur: synDur });
     count++;
   }
 

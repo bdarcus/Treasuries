@@ -36,7 +36,8 @@ function calcGapParams(gapYears, tipsMap, settlementDate, refCPI, dara, prelim) 
     const synYld = interpolateYield(anchorBefore, anchorAfter, synMat);
     const synCpn = _synCoupon(synYld);
 
-    totalDuration += calculateMDuration(settlementDate, synMat, synCpn, synYld);
+    const synDur = calculateMDuration(settlementDate, synMat, synCpn, synYld);
+    totalDuration += synDur;
 
     // LMI = interest from actual funded-year bonds above this gap year
     //       + synthetic interest from longer hypothetical gap years already processed
@@ -48,7 +49,7 @@ function calcGapParams(gapYears, tipsMap, settlementDate, refCPI, dara, prelim) 
     const piPerBond = 1000 + 1000 * synCpn * 0.5;
     const qty = Math.round((dara - laterMatInt) / piPerBond);
     totalCost += qty * 1000;
-    breakdown.push({ year, qty, piPerBond, laterMatInt });
+    breakdown.push({ year, qty, piPerBond, laterMatInt, dur: synDur });
     runningSynLMI += qty * 1000 * synCpn; // this gap year's synthetic interest feeds shorter rungs
     count++;
   }
