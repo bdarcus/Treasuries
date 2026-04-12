@@ -1059,7 +1059,7 @@ document.getElementById('run-btn').addEventListener('click', async () => {
 
       let finalDara = _getDefaultDara();
       if (!isNaN(finalDara) && finalDara < 1000) { setStatus('DARA must be at least $1,000.', true); return; }
-      if (document.getElementById('method').value === 'Full' && isNaN(finalDara)) {
+      if (document.getElementById('method').value === 'Full' && (isNaN(finalDara) || _daraAutoInferred)) {
         const inferred = inferDARAFromCash({
           bracketMode: document.getElementById('bracket-mode').value,
           holdings: currentHoldingsArray,

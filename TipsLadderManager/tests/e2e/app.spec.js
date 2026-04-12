@@ -615,6 +615,32 @@ test('rebalance: Full method net cash is non-negative after clearing DARA and re
   expect(Math.abs(netCash), `Net cash ${netCash} exceeds $1,000 tolerance after fresh inference`).toBeLessThanOrEqual(1000);
 });
 
+// ── 20b. Auto-inferred DARA is re-calculated when any other param changes ─────
+test('rebalance: auto-inferred DARA is re-inferred when bracket mode changes', async ({ page }) => {
+  await page.locator('#holdings-file').setInputFiles(HOLDINGS_PATH);
+  await page.locator('#dara').fill('');
+  await expect(page.locator('#method')).toHaveValue('Full');
+
+  // First run — DARA auto-inferred
+  await page.locator('#run-btn').click();
+  await expect(page.locator('#simple-table tbody tr').first()).toBeVisible({ timeout: 15_000 });
+  const daraFirst = await page.locator('#dara').inputValue();
+  expect(daraFirst).toMatch(/^\d+$/);
+
+  // Change bracket mode (param change — DARA NOT manually re-entered, still auto-inferred)
+  const currentMode = await page.locator('#bracket-mode').inputValue();
+  await page.locator('#bracket-mode').selectOption(currentMode === '3bracket' ? '2bracket' : '3bracket');
+
+  // Re-run — should re-infer DARA (not silently reuse the stale auto-inferred value)
+  await page.locator('#run-btn').click();
+  await expect(page.locator('#simple-table tbody tr').first()).toBeVisible({ timeout: 15_000 });
+
+  // DARA field must still contain a valid number (inference ran and succeeded)
+  const daraSecond = await page.locator('#dara').inputValue();
+  expect(daraSecond, 'DARA not re-inferred after bracket mode change').toMatch(/^\d+$/);
+  expect(parseInt(daraSecond, 10)).toBeGreaterThan(0);
+});
+
 // ── 20. Enter on refcpi-date-input must not auto-trigger Run ──────────────────
 test('rebalance: pressing Enter in RefCPI date picker applies date but does not auto-run', async ({ page }) => {
   await page.locator('#holdings-file').setInputFiles(HOLDINGS_PATH);
