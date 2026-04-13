@@ -178,7 +178,7 @@ function createChartInstance(sym) {
     options: {
       animation: false, responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       scales: {
-        x: { type: 'time', time: { tooltipFormat: 'MM/dd/yy HH:mm:ss', displayFormats: { hour: 'MM/dd HH:mm', day: 'MMM dd' } }, grid: { color: '#f1f5f9' }, ticks: { autoSkip: true, font: { size: 9, weight: 'bold' }, color: '#000', callback: function(value, index, ticks) { const ts = ticks[index]?.value ?? value; if (typeof ts !== 'number') return value; const date = new Date(ts); if (activeRange === '2D') return date.toLocaleString('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); if (activeRange === '10D') return date.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }); return date.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', year: 'numeric' }); } } },
+        x: { type: 'time', time: { tooltipFormat: 'MM/dd/yy HH:mm:ss', displayFormats: { hour: 'MM/dd HH:mm', day: 'MMM dd', month: 'MMM yyyy', year: 'yyyy' } }, grid: { color: '#f1f5f9' }, ticks: { autoSkip: true, font: { size: 9, weight: 'bold' }, color: '#000' } },
         y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 9, family: 'monospace', weight: 'bold' }, color: '#000', callback: v => v.toFixed(3) + '%' } }
       },
       plugins: { legend: { display: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoom: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onZoomComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } }, pan: { enabled: true, mode: 'xy', onPan: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onPanComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } } }, annotation: { annotations: {} }, tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#64748b', titleFont: { size: 11, weight: 'bold' }, bodyColor: '#000', borderColor: '#cbd5e1', borderWidth: 1, padding: 8, bodyFont: { size: 12, weight: 'bold' }, cornerRadius: 6, displayColors: false, callbacks: { title: (items) => { if (!items.length) return ''; const date = new Date(items[0].parsed.x); return date.toLocaleString('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET'; }, label: ctx => `Yield: ${ctx.parsed.y.toFixed(3)}%` } } }
@@ -236,29 +236,18 @@ async function fetchOne(symbol, range, force = false) {
   const is2D = range === '2D', is10D = range === '10D';
   if (is2D || is10D) {
     const providerRange = is2D ? '1D' : '5D', cacheKey = `${symbol}_${providerRange}`;
-    const tipKey = `${symbol}_5D`;
-    
-    // In 2D mode, also trigger a parallel fetch for the 5D tip if missing for metrics
-    const fetchTasks = [];
     if (!force && liveCache[cacheKey]) {
-      // Use cache
-    } else {
-      console.log(`%c[CNBC] %cFetching real-time ${providerRange} for ${symbol}`, "color: #2563eb; font-weight: bold", "color: inherit");
-      fetchTasks.push(fetchLive(symbol, providerRange).then(live => { if (live) liveCache[cacheKey] = live; }));
+      const cutoff = new Date(); if (is2D) cutoff.setDate(cutoff.getDate() - 2); else cutoff.setDate(cutoff.getDate() - 10);
+      return liveCache[cacheKey].filter(p => p.x >= cutoff);
     }
-    
-    if (is2D && (force || !liveCache[tipKey])) {
-      console.log(`%c[CNBC] %cFetching 5D tip for metrics: ${symbol}`, "color: #2563eb; font-weight: bold", "color: inherit");
-      fetchTasks.push(fetchLive(symbol, '5D').then(live => { if (live) liveCache[tipKey] = live; }));
+    console.log(`%c[CNBC] %cFetching real-time ${providerRange} for ${symbol}`, "color: #2563eb; font-weight: bold", "color: inherit");
+    const live = await fetchLive(symbol, providerRange);
+    if (live && live.length > 0) {
+      liveCache[cacheKey] = live;
+      const cutoff = new Date(); if (is2D) cutoff.setDate(cutoff.getDate() - 2); else cutoff.setDate(cutoff.getDate() - 10);
+      return live.filter(p => p.x >= cutoff);
     }
-    
-    if (fetchTasks.length > 0) await Promise.all(fetchTasks);
-
-    const data = liveCache[cacheKey] || [];
-    const cutoff = new Date(); if (is2D) cutoff.setDate(cutoff.getDate() - 2); else cutoff.setDate(cutoff.getDate() - 10);
-    const filtered = data.filter(p => p.x >= cutoff);
-    console.log(`[fetchOne] ${symbol} ${range} points: ${data.length} -> ${filtered.length}`);
-    return filtered;
+    return live || [];
   } else {
     console.log(`%c[R2] %cLoading history for ${symbol}...`, "color: #ea580c; font-weight: bold", "color: inherit");
     const history = await fetchHistory(symbol);
