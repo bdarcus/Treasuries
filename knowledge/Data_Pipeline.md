@@ -33,9 +33,11 @@ These jobs run on the host machine via Windows Task Scheduler.
 | **Auction Refresh** | Weekdays 8:05/10:35am PT | `scripts/getAuctions.js` | `Auctions.csv` |
 | **TIPS Ref Refresh** | Mondays 7am PT | `scripts/fetchTipsRef.js` | `TipsRef.csv` |
 | **Yield History Snap** | Weekdays 11am PT | `YieldsMonitor/scripts/snapHistory.js` | `yield-history/` |
-| **Ref CPI Refresh** | Monthly (Release Day) | `scripts/fetchRefCpi.js` | `RefCPI.csv` |
+| **Ref CPI Refresh** | 8:35 AM ET on each BLS release date | `scripts/fetchRefCpi.js` (`run-ref-cpi.cmd`) | `TIPS/RefCPI.csv` |
 | **SA Factor Update** | Daily 6:35am | `YieldCurves/scripts/updateRefCpi.js` | `RefCpiNsaSa.csv` |
-| **CPI History Refresh** | Monthly (Release Day) | `scripts/fetchCpiHistory.js` | `bls/CPI_history.csv` |
+| **CPI History Refresh** | 8:35 AM ET on each BLS release date | `scripts/fetchCpiHistory.js` (`run-cpi-history.cmd`) | `bls/CPI_history.csv` |
+
+**CPI release date triggers:** `RefCPI` and `FetchCpiHistory` tasks use date-specific `Once` triggers (not a daily poll). Triggers are set by `scripts/setup-cpi-release-tasks.ps1`, which reads `bls/CpiReleaseSchedule{year}.csv` from R2 and registers one trigger per release date. A `RefreshCpiTasks` task runs Dec 29 each year to reload the next year's schedule and self-reschedule. Re-run the script manually if the schedule changes.
 
 ---
 

@@ -234,7 +234,7 @@ const NODES = [
    r2Key:'Treasuries/YieldsFromFedInvestPrices.csv',
    schema:'Settlement_Date + {CUSIP + Type + Maturity + Coupon + DatedDateCPI + Price + Yield}'},
   {id:'S3',type:'store',label:'RefCPI.csv',      sub:'S3',cx:468,cy:175,
-   r2Key:'Treasuries/RefCPI.csv',
+   r2Key:'TIPS/RefCPI.csv',
    schema:'{Date + RefCPI}'},
   {id:'S2',type:'store',label:'TipsRef.csv',     sub:'S2',cx:468,cy:280,
    r2Key:'Treasuries/TipsRef.csv',
@@ -325,7 +325,7 @@ const EDGES = [
 ];
 
 // \u2500\u2500 Mappings for status overlay \u2500\u2500
-const R2_TO_NODE  = {'Treasuries/YieldsFromFedInvestPrices.csv':'S1','Treasuries/RefCPI.csv':'S3','Treasuries/TipsRef.csv':'S2','Treasuries/RefCpiNsaSa.csv':'S4','Treasuries/Auctions.csv':'S5','Treasuries/yield-history/US10Y_history.json':'S6','Treasuries/FidelityTreasuries.csv':'S7a','Treasuries/FidelityTips.csv':'S7b','misc/BondHolidaysSifma.csv':'S8','TIPS/tentative_tips.json':'S9'};
+const R2_TO_NODE  = {'Treasuries/YieldsFromFedInvestPrices.csv':'S1','TIPS/RefCPI.csv':'S3','Treasuries/TipsRef.csv':'S2','Treasuries/RefCpiNsaSa.csv':'S4','Treasuries/Auctions.csv':'S5','Treasuries/yield-history/US10Y_history.json':'S6','Treasuries/FidelityTreasuries.csv':'S7a','Treasuries/FidelityTips.csv':'S7b','misc/BondHolidaysSifma.csv':'S8','TIPS/tentative_tips.json':'S9'};
 const APPID_TO_NODE = {'yieldcurves':'A1','tipsladder':'A2','auctions':'A4','yieldsmonitor':'A3'};
 
 const nodeMap = Object.fromEntries(NODES.map(n=>[n.id,n]));

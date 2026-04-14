@@ -17,7 +17,7 @@ const HOLDINGS_PATH = path.join(ROOT, 'tests', 'CusipQtyTestLumpy.csv');
 test.beforeEach(async ({ page }) => {
   await page.route('**/Treasuries/YieldsFromFedInvestPrices.csv', r =>
     r.fulfill({ body: csv('YieldsFromFedInvestPrices.csv'), contentType: 'text/csv' }));
-  await page.route('**/Treasuries/RefCPI.csv', r =>
+  await page.route('**/TIPS/RefCPI.csv', r =>
     r.fulfill({ body: csv('RefCPI.csv'), contentType: 'text/csv' }));
   await page.route('**/Treasuries/TipsRef.csv', r =>
     r.fulfill({ body: csv('TipsRef.csv'), contentType: 'text/csv' }));
