@@ -148,6 +148,7 @@ let sortAsc = false;
 let filters = {};              // field -> filter string
 let dateFrom = '';
 let dateTo = '';
+let tentativeTips = [];        // Data from Treasury's Tentative Auction Schedule
 
 let orderedColumns = { all: [], bills: [], notesbonds: [], tips: [] };
 let colWidths = {};           // field -> width (px)
@@ -446,15 +447,33 @@ function renderUpcoming(csvText) {
     tbody.innerHTML = '<tr><td style="padding:8px 10px;color:#64748b;font-style:italic;">No upcoming auction data available.</td></tr>';
     return;
   }
-  const { headers, rows } = parseCSV(csvText);
+  let { headers, rows } = parseCSV(csvText);
   if (!rows.length) {
     thead.innerHTML = '';
     tbody.innerHTML = '<tr><td style="padding:8px 10px;color:#64748b;font-style:italic;">No upcoming auctions found.</td></tr>';
     return;
   }
-  thead.innerHTML = headers.map(f => `<th>${fieldLabel(f)}</th>`).join('');
+
+  // Cross-reference with Tentative Schedule to identify TIPS
+  const extendedHeaders = [...headers, 'inflation_index_security'];
+  rows.forEach(r => {
+    const isTentativeTips = tentativeTips.some(t => 
+      t.auction_date === r.auction_date && t.security_term === r.security_term
+    );
+    r.inflation_index_security = isTentativeTips ? 'Yes' : 'No';
+  });
+
+  thead.innerHTML = extendedHeaders.map(f => `<th>${fieldLabel(f)}</th>`).join('');
   tbody.innerHTML = rows.map(r =>
-    `<tr>${headers.map(f => `<td>${fmtVal(r[f], detectFmt(f))}</td>`).join('')}</tr>`
+    `<tr>${extendedHeaders.map(f => {
+      const val = r[f];
+      const fmt = detectFmt(f);
+      let cellClass = '';
+      if (f === 'inflation_index_security' && val === 'Yes') {
+        cellClass = ' style="color:#059669;font-weight:600;"';
+      }
+      return `<td${cellClass}>${fmtVal(val, fmt)}</td>`;
+    }).join('')}</tr>`
   ).join('');
 }
 
@@ -462,10 +481,17 @@ function renderUpcoming(csvText) {
 async function loadData() {
   setStatus('Fetching data...');
 
-  const [csvResult, upcomingResult] = await Promise.allSettled([
+  const [csvResult, upcomingResult, tentativeResult] = await Promise.allSettled([
     fetch(R2_CSV_URL, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`R2 HTTP ${r.status}`); return r.text(); }),
     fetch(upcomingUrl(), { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`Upcoming HTTP ${r.status}`); return r.text(); }),
+    fetch('data/tentative_tips.json', { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`Tentative JSON HTTP ${r.status}`); return r.json(); }),
   ]);
+
+  if (tentativeResult.status === 'fulfilled') {
+    tentativeTips = tentativeResult.value;
+  } else {
+    console.warn('Could not load tentative TIPS data:', tentativeResult.reason);
+  }
 
   if (csvResult.status === 'fulfilled') {
     const { headers, rows } = parseCSV(csvResult.value);
