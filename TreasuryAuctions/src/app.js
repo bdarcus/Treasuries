@@ -34,7 +34,7 @@ const DEFAULT_COLS = {
     'cusip','security_type','security_term','original_security_term',
     'announcemt_date','dated_date','auction_date','issue_date','maturity_date',
     'int_rate','high_yield','high_price','accrued_int_per1000',
-    'offering_amt','reopening','closing_time_comp',
+    'offering_amt','reopening','inflation_index_security','closing_time_comp',
   ],
   tips: [
     'cusip','security_term','announcemt_date','dated_date','auction_date',
@@ -455,13 +455,20 @@ function renderUpcoming(csvText) {
     return;
   }
 
-  // Cross-reference with Tentative Schedule to identify TIPS
+  // Cross-reference with Tentative Schedule and identify TIPS
   const extendedHeaders = [...headers, 'inflation_index_security'];
   rows.forEach(r => {
-    const isTentativeTips = tentativeTips.some(t => 
-      t.auction_date === r.auction_date && t.security_term === r.security_term
-    );
-    r.inflation_index_security = isTentativeTips ? 'Yes' : 'No';
+    const rDate = (r.auction_date || '').trim();
+    const rTerm = (r.security_term || '').toLowerCase().trim();
+    const isActuallyTips = (r.security_type || '').toLowerCase().includes('tips');
+
+    const isTentativeTips = tentativeTips.some(t => {
+      const tDate = (t.auction_date || '').trim();
+      const tTerm = (t.security_term || '').toLowerCase().trim();
+      return tDate === rDate && tTerm === rTerm;
+    });
+
+    r.inflation_index_security = (isActuallyTips || isTentativeTips) ? 'Yes' : 'No';
   });
 
   thead.innerHTML = extendedHeaders.map(f => `<th>${fieldLabel(f)}</th>`).join('');
