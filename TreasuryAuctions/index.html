@@ -48,8 +48,19 @@
   .section-title { font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; }
   #row-count { font-size: 11px; color: #94a3b8; margin-left: auto; }
 
-  .upcoming-section { flex-shrink: 0; max-height: 190px; }
-  .historical-section { flex: 1; min-height: 0; }
+  .main-section { flex: 1; min-height: 0; }
+
+  /* ── Tabs ── */
+  .tab-header { padding: 0 10px; display: flex; align-items: stretch; gap: 0; height: 32px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px 8px 0 0; flex-shrink: 0; }
+  .tab-btn { padding: 0 15px; border: none; background: transparent; font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab-btn:hover { color: #1e293b; background: #f1f5f9; }
+  .tab-btn.active { color: #1a56db; border-bottom-color: #1a56db; background: #fff; }
+
+  .tab-content { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+  .tab-pane { display: none; flex: 1; flex-direction: column; min-height: 0; }
+  .tab-pane.active { display: flex; }
+
+  .tab-toolbar { padding: 6px 12px; border-bottom: 1px solid #f1f5f9; background: #fff; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
   /* ── Table ── */
   .table-wrap { overflow: auto; flex: 1; min-height: 0; position: relative; background: #fff; }
@@ -207,37 +218,53 @@
     </div>
 
     <div class="content">
-      <div class="section upcoming-section" id="upcomingSection">
-        <div class="section-header">
-          <span class="section-title">Upcoming Auctions</span>
-          <button class="btn btn-sm" id="toggleUpcomingBtn" style="margin-left:auto;background:#475569;">Hide</button>
+      <div class="section main-section">
+        <div class="tab-header" id="tabHeader">
+          <button class="tab-btn active" data-tab="historical">Historical Auctions</button>
+          <button class="tab-btn" data-tab="upcoming">Upcoming Auctions</button>
+          <button class="tab-btn" data-tab="tentative">Tentative Schedule</button>
+          <span id="row-count" style="margin-left:auto; line-height:32px; padding-right:12px;"></span>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr id="upcoming-thead"></tr></thead>
-            <tbody id="upcoming-tbody"></tbody>
-          </table>
-        </div>
-      </div>
 
-      <div class="section historical-section">
-        <div class="section-header">
-          <span class="section-title">Historical Auctions</span>
-          <button class="btn btn-sm" id="showUpcomingBtn" style="display:none;margin-right:12px;background:#475569;">Show Upcoming</button>
-          <div id="date-range" style="display:flex;align-items:center;gap:6px;margin-left:12px;">
-            <label style="font-size:11px;color:#64748b;font-weight:600;">From</label>
-            <input type="date" id="dateFrom" style="font-size:11px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;">
-            <label style="font-size:11px;color:#64748b;font-weight:600;">To</label>
-            <input type="date" id="dateTo" style="font-size:11px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;">
-            <button id="clearDateBtn" style="font-size:11px;padding:1px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;cursor:pointer;color:#475569;">✕</button>
+        <div class="tab-content">
+          <!-- Historical Tab -->
+          <div id="tab-historical" class="tab-pane active">
+            <div class="tab-toolbar">
+              <div id="date-range" style="display:flex;align-items:center;gap:6px;">
+                <label style="font-size:11px;color:#64748b;font-weight:600;">From</label>
+                <input type="date" id="dateFrom" style="font-size:11px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;">
+                <label style="font-size:11px;color:#64748b;font-weight:600;">To</label>
+                <input type="date" id="dateTo" style="font-size:11px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;">
+                <button id="clearDateBtn" style="font-size:11px;padding:1px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;cursor:pointer;color:#475569;">✕</button>
+              </div>
+            </div>
+            <div class="table-wrap" id="tableWrap">
+              <table id="mainTable">
+                <thead id="mainThead"></thead>
+                <tbody id="mainTbody"></tbody>
+              </table>
+            </div>
           </div>
-          <span id="row-count" style="margin-left:auto;"></span>
-        </div>
-        <div class="table-wrap" id="tableWrap">
-          <table id="mainTable">
-            <thead id="mainThead"></thead>
-            <tbody id="mainTbody"></tbody>
-          </table>
+
+          <!-- Upcoming Tab -->
+          <div id="tab-upcoming" class="tab-pane">
+            <div class="table-wrap">
+              <table>
+                <thead><tr id="upcoming-thead"></tr></thead>
+                <tbody id="upcoming-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tentative Tab -->
+          <div id="tab-tentative" class="tab-pane">
+            <div class="table-wrap">
+              <table style="width:100%; table-layout:fixed;">
+                <thead id="tentative-thead"></thead>
+                <tbody id="tentative-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -336,6 +336,49 @@ console.log('\nBuild→Rebalance symmetry — firstYear=2036, lastYear=2065, PLI
   console.log(`        Total |qtyDelta|:  ${totalAbsQtyDeltaFull}`);
 }
 
+// ── Test: DARA inference from build CUSIP/qty output ─────────────────────────
+// Build (firstYear=2035, lastYear=2064, PLI=true, DARA=40000) → export CUSIP/qty
+// → Rebalance (firstYear=2036, lastYear=2065, PLI=true, dara=null).
+// inferredDARA should land close to the build DARA (within ±500).
+// If this fails it means the inference formula is broken, not the rebalance itself.
+console.log('\nBuild→Rebalance DARA inference — firstYear=2035→2036, lastYear=2064→2065, PLI=true');
+{
+  const BUILD_DARA = 40000;
+
+  // 1. Build
+  const { details: inferBuildDetails } = runBuild({
+    dara: BUILD_DARA,
+    firstYear: 2035,
+    lastYear: 2064,
+    tipsMap, refCPI, settlementDate,
+    preLadderInterest: true,
+  });
+
+  // 2. Export CUSIP/qty — mirror "Export CUSIP/Qty" button behaviour:
+  //    include all rows (fundedYearQty + excessQty), including PLI-zeroed rows (qty=0).
+  const inferHoldings = inferBuildDetails
+    .map(d => ({ cusip: d.cusip, qty: d.fundedYearQty + d.excessQty }));
+
+  // 3. Rebalance with no explicit DARA — shift to firstYear=2036, lastYear=2065
+  const { summary: inferRebalSummary } = runRebalance({
+    dara: null,
+    method: 'Gap',
+    bracketMode: '2bracket',
+    holdings: inferHoldings,
+    tipsMap, refCPI, settlementDate,
+    preLadderInterest: true,
+    firstYearOverride: 2036,
+    lastYearOverride: 2065,
+  });
+
+  const inferred = inferRebalSummary.inferredDARA;
+  assert('inferredDARA within 500 of build DARA (40000)',
+    Math.abs(inferred - BUILD_DARA) <= 500, true);
+  console.log(`        build DARA:      ${BUILD_DARA.toLocaleString()}`);
+  console.log(`        inferredDARA:    ${Math.round(inferred).toLocaleString()}`);
+  console.log(`        delta:           ${Math.round(inferred - BUILD_DARA).toLocaleString()}`);
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

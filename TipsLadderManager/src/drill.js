@@ -62,10 +62,14 @@ function gapBreakdownRows(gapParams, dara) {
   let rows = '';
   gapParams.breakdown.forEach((g, i) => {
     const id = 'gap' + i;
-    const fmla = 'round((DARA \u2212 <span class="formula-var" data-source="' + id + 'lmi">LMI</span>) \u00f7 <span class="formula-var" data-source="' + id + 'pi">P+I</span>)';
+    const pliCredit = g.pliCredit ?? 0;
+    let fmla = 'round((DARA \u2212 <span class="formula-var" data-source="' + id + 'lmi">LMI</span>';
+    if (pliCredit > 0) fmla += ' \u2212 <span class="formula-var" data-source="' + id + 'pli">PLI</span>';
+    fmla += ') \u00f7 <span class="formula-var" data-source="' + id + 'pi">P+I</span>)';
     rows += row(g.year + ' quantity', fmla, g.qty, false, undefined, id + 'qty')
           + row('\u21b3 P+I per synthetic TIPS', '', fm2(g.piPerBond), false, undefined, id + 'pi')
-          + row('\u21b3 Later mat int', 'Total coupon interest from Future 30Y TIPS rungs', fm(g.laterMatInt), false, undefined, id + 'lmi')
+          + row('\u21b3 LMI (actual TIPS + longer synth)', 'coupon from funded years above + synth LMI from longer gap years', fm(g.laterMatInt), false, undefined, id + 'lmi')
+          + (pliCredit > 0 ? row('\u21b3 PLI credit', 'pre-ladder pool applied to this gap year', fm(pliCredit), false, undefined, id + 'pli') : '')
           + row('\u21b3 Theoretical cost', '<span class="formula-var" data-source="' + id + 'qty">Quantity</span> \xd7 $1,000', fm(g.qty * 1000));
   });
   return rows;
@@ -183,7 +187,15 @@ export function buildDrillHTML(d, colKey, summary) {
     const laterMatInt = isBef ? d.araBeforeLaterMatInt : d.araAfterLaterMatInt;
     const araTotal    = isBef ? d.araBeforeTotal       : d.araAfterTotal;
     const DARA        = d.DARA ?? summary?.DARA;
+    const _plCredit   = isBef ? 0 : (d.preLadderCreditForYear || 0);
+    // Compute ownSum first so we can detect PLI-zeroed years (holdings present but all qty=0).
     let ownSum = 0;
+    holdings.forEach(h => { ownSum += h.principalPerBond * (1 + h.coupon / 2 * h.nPeriods) * h.qty; });
+    // PLI-zeroed years: holdings exist but all qty=0 (vs new rungs where holdings=[]).
+    // Display inferredDARA as "Amount Before" since PLI fully covered the rung's need.
+    const _pliZeroed  = isBef && holdings.length > 0 && ownSum === 0 && (summary?.inferredDARA ?? 0) > 0;
+    const _displayAmt = _pliZeroed ? Math.round(summary.inferredDARA) : araTotal;
+    ownSum = 0;
     holdings.forEach((h, i) => {
       const piPB = h.principalPerBond * (1 + h.coupon / 2 * h.nPeriods);
       const hTotal = piPB * h.qty;
@@ -197,17 +209,22 @@ export function buildDrillHTML(d, colKey, summary) {
       + row('Interest from longer-dated TIPS', 'from TIPS maturing after ' + d.fundedYear, fm(laterMatInt), false, undefined, 'lmi');
     const excessLMI = isBef ? d.excessLMI_Before : d.excessLMI_After;
     if (excessLMI > 0) {
-    rows += row('Interest from same-year excess (bracket)', 'from additional ' + d.fundedYear + ' TIPS held to cover Future 30Y rungs', fm(excessLMI), false, undefined, 'exlmi');
+      rows += row('Interest from same-year excess (bracket)', 'from additional ' + d.fundedYear + ' TIPS held to cover Future 30Y rungs', fm(excessLMI), false, undefined, 'exlmi');
     }
-    const totalFmla = excessLMI > 0
-      ? 'Funded year TIPS + <span class="formula-var" data-source="lmi">Longer-dated int</span> + <span class="formula-var" data-source="exlmi">Same-year excess int</span>'
+    if (_plCredit > 0) {
+      rows += row('Pre-ladder credit', 'pre-ladder pool applied to this year', fm(_plCredit), false, undefined, 'plc');
+    }
+    let totalFmla = _pliZeroed
+      ? 'Inferred from CSV'
       : 'Funded year TIPS + <span class="formula-var" data-source="lmi">Longer-dated int</span>';
+    if (!_pliZeroed && excessLMI > 0) totalFmla += ' + <span class="formula-var" data-source="exlmi">Same-year excess int</span>';
+    if (!_pliZeroed && _plCredit > 0) totalFmla += ' + <span class="formula-var" data-source="plc">Pre-ladder credit</span>';
     rows += sep()
-      + row(isBef ? 'Amount Before' : 'Amount After', totalFmla, fm(araTotal), true)
+      + row(isBef ? 'Amount Before' : 'Amount After', totalFmla, fm(_displayAmt), true)
       + sep()
       + row('DARA', '', fm(DARA), false, undefined, 'dara')
       + row('Surplus / Deficit', (isBef ? 'Amount Before' : 'Amount After') + ' \u2212 <span class="formula-var" data-source="dara">DARA</span>',
-            (araTotal - DARA >= 0 ? '+' : '') + Math.round(araTotal - DARA).toLocaleString('en-US'));
+            (_displayAmt - DARA >= 0 ? '+' : '') + Math.round(_displayAmt - DARA).toLocaleString('en-US'));
 
   // ── Rebalance: Qty Before / After ─────────────────────────────────────────────
   } else if (colKey === 'qtyAfter' || colKey === 'qtyBefore' || colKey === 'qty') {

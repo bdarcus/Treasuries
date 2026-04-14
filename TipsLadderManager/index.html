@@ -456,6 +456,8 @@ let rebalDetails = null;
 let rebalSummary = null;
 let buildSummary = null;
 let lastHDR = null, lastResults = null;
+let lastBuildHDR = null, lastBuildResults = null;
+let lastRebalHDR = null, lastRebalResults = null;
 let _staticInfoPrefix = '', _staticInfoSuffix = '';
 let activeRefCpiDateStr = null;
 let _defaultRefCpiDateStr = null;
@@ -524,10 +526,12 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 // ─── Export table CSV ────────────────────────────────────────────────────────
 document.getElementById('export-csv-btn').addEventListener('click', () => {
   const filename = `tips-ladder-${currentMode}-${new Date().toISOString().split('T')[0]}.csv`;
+  const modeHDR = currentMode === 'build' ? lastBuildHDR : lastRebalHDR;
+  const modeResults = currentMode === 'build' ? lastBuildResults : lastRebalResults;
   let csvData = [];
-  if (lastHDR && lastResults) {
-    csvData.push(lastHDR.join(','));
-    for (const row of lastResults) {
+  if (modeHDR && modeResults) {
+    csvData.push(modeHDR.join(','));
+    for (const row of modeResults) {
       csvData.push(row.map(v => {
         if (typeof v === 'number') return v.toFixed(5).replace(/\.?0+$/, '');
         return '"' + String(v).replace(/"/g, '""') + '"';
@@ -556,9 +560,16 @@ document.getElementById('export-cusip-qty-btn').addEventListener('click', () => 
   const details = currentMode === 'build' ? buildDetails : rebalDetails;
   if (!details) return;
   const rows = ['cusip,qty'];
+  const zeroedSet = currentMode === 'build'
+    ? new Set(buildSummary?.zeroedFundedYears ?? [])
+    : new Set();
   for (const d of details) {
     const totalQty = currentMode === 'build' ? (d.fundedYearQty + d.excessQty) : d.qtyAfter;
-    if (totalQty > 0) rows.push(d.cusip + ',' + totalQty);
+    if (totalQty > 0) {
+      rows.push(d.cusip + ',' + totalQty);
+    } else if (currentMode === 'build' && zeroedSet.has(d.fundedYear)) {
+      rows.push(d.cusip + ',0');
+    }
   }
   const filename = `cusip-qty-${new Date().toISOString().split('T')[0]}.csv`;
   const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
@@ -573,6 +584,7 @@ document.getElementById('export-cusip-qty-btn').addEventListener('click', () => 
 // ─── Render rebalance output ──────────────────────────────────────────────────
 function renderOutput({ results, HDR, summary, details }, portfolioCash = null) {
   lastHDR = HDR; lastResults = results;
+  lastRebalHDR = HDR; lastRebalResults = results;
   const {
     settleDateDisp, refCPI, DARA, inferredDARA, daraIsInferred, method,
     firstYear, lastYear, rungCount, gapYears,
@@ -622,6 +634,7 @@ function renderOutput({ results, HDR, summary, details }, portfolioCash = null) 
 // ─── Render Build from Scratch output ────────────────────────────────────────
 function renderBuildOutput({ results, HDR, summary, details }) {
   lastHDR = HDR; lastResults = results;
+  lastBuildHDR = HDR; lastBuildResults = results;
   const {
     settleDateDisp, refCPI, dara,
     firstYear, lastYear, gapYears,
@@ -836,6 +849,8 @@ document.getElementById('holdings-file').addEventListener('change', async (e) =>
       return;
     }
     
+    document.getElementById('rebal-last-year').value = '';
+    document.getElementById('rebal-first-year').value = '';
     updateRebalLastYearDropdown();
     updateRebalFirstYearDropdown();
     renderDaraByYearPanel();
@@ -854,6 +869,8 @@ document.getElementById('holdings-file').addEventListener('change', async (e) =>
     let combined = [];
     for (const name of selected) combined = combined.concat(window._pendingBrokerAccounts[name]);
     currentHoldingsArray = combined;
+    document.getElementById('rebal-last-year').value = '';
+    document.getElementById('rebal-first-year').value = '';
     updateRebalLastYearDropdown();
     updateRebalFirstYearDropdown();
     renderDaraByYearPanel();

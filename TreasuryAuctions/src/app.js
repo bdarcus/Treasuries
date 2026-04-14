@@ -2,6 +2,8 @@
 
 const R2_CSV_URL = 'https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/Treasuries/Auctions.csv';
 const TENTATIVE_TIPS_URL = 'https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/TIPS/tentative_tips.json';
+const TENTATIVE_XML_URL = 'https://home.treasury.gov/system/files/221/Tentative-Auction-Schedule.xml';
+// If CORS fails for direct XML, we may need an R2 mirror. For now we attempt direct.
 
 const UPCOMING_BASE_URL =
   'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/upcoming_auctions' +
@@ -149,7 +151,7 @@ let sortAsc = false;
 let filters = {};              // field -> filter string
 let dateFrom = '';
 let dateTo = '';
-let tentativeTips = [];        // Data from Treasury's Tentative Auction Schedule
+let tentativeAuctions = [];    // Parsed from Treasury's Tentative Auction Schedule XML
 
 let orderedColumns = { all: [], bills: [], notesbonds: [], tips: [] };
 let colWidths = {};           // field -> width (px)
@@ -462,10 +464,10 @@ function renderUpcoming(csvText) {
     const rTerm = (r.security_term || '').toLowerCase().trim();
     const isActuallyTips = (r.security_type || '').toLowerCase().includes('tips');
 
-    const isTentativeTips = tentativeTips.some(t => {
+    const isTentativeTips = tentativeAuctions.some(t => {
       const tDate = (t.auction_date || '').trim();
       const tTerm = (t.security_term || '').toLowerCase().trim();
-      return tDate === rDate && tTerm === rTerm;
+      return tDate === rDate && tTerm === rTerm && t.tips === 'Yes';
     });
 
     r.inflation_index_security = (isActuallyTips || isTentativeTips) ? 'Yes' : 'No';
@@ -485,27 +487,80 @@ function renderUpcoming(csvText) {
   ).join('');
 }
 
+// ── Render Tentative Schedule ────────────────────────────────────────────────
+function renderTentative() {
+  const tbody = document.getElementById('tentative-tbody');
+  const thead = document.getElementById('tentative-thead');
+  
+  if (!tentativeAuctions.length) {
+    tbody.innerHTML = '<tr><td style="padding:20px; color:#64748b; font-style:italic; text-align:center;">No tentative schedule data available.</td></tr>';
+    return;
+  }
+
+  const fields = [
+    { key: 'auction_date', label: 'Auction Date' },
+    { key: 'security_term', label: 'Term' },
+    { key: 'security_type', label: 'Type' },
+    { key: 'reopening', label: 'Reopen' },
+    { key: 'tips', label: 'TIPS' },
+    { key: 'announcement_date', label: 'Announcement Date' },
+    { key: 'settlement_date', label: 'Settlement Date' }
+  ];
+
+  thead.innerHTML = `<tr>${fields.map(f => `<th>${f.label}</th>`).join('')}</tr>`;
+  
+  // Exclude FRNs
+  const filtered = tentativeAuctions.filter(a => a.floating_rate !== 'Yes');
+
+  tbody.innerHTML = filtered.map(node => {
+    let rowHtml = '<tr>';
+    fields.forEach(f => {
+      const val = node[f.key];
+      let cellStyle = '';
+      if (f.key === 'tips' && val === 'Yes') cellStyle = ' style="color:#059669; font-weight:600;"';
+      rowHtml += `<td${cellStyle}>${val}</td>`;
+    });
+    rowHtml += '</tr>';
+    return rowHtml;
+  }).join('');
+}
+
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function loadData() {
   setStatus('Fetching data...');
 
-  const [csvResult, upcomingResult, tentativeResult] = await Promise.allSettled([
+  const R2_XML_MIRROR = 'https://pub-ba11062b177640459f72e0a88d0261ae.r2.dev/TIPS/Tentative-Auction-Schedule.xml';
+
+  const [csvResult, upcomingResult, xmlResult] = await Promise.allSettled([
     fetch(R2_CSV_URL, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`R2 HTTP ${r.status}`); return r.text(); }),
     fetch(upcomingUrl(), { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`Upcoming HTTP ${r.status}`); return r.text(); }),
-    fetch(TENTATIVE_TIPS_URL, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`Tentative JSON HTTP ${r.status}`); return r.json(); }),
+    fetch(R2_XML_MIRROR, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(`XML HTTP ${r.status}`); return r.text(); }),
   ]);
 
-  if (tentativeResult.status === 'fulfilled') {
-    tentativeTips = tentativeResult.value;
-  } else {
-    console.warn('Could not load tentative TIPS data:', tentativeResult.reason);
+  if (xmlResult.status === 'fulfilled') {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlResult.value, 'text/xml');
+      const nodes = xmlDoc.getElementsByTagName('AuctionCalendarDate');
+      tentativeAuctions = Array.from(nodes).map(node => ({
+        auction_date: node.getElementsByTagName('AuctionDate')[0]?.textContent || '',
+        security_term: node.getElementsByTagName('SecurityTermWeekYear')[0]?.textContent || '',
+        security_type: node.getElementsByTagName('SecurityType')[0]?.textContent || '',
+        reopening: node.getElementsByTagName('ReOpeningIndicator')[0]?.textContent === 'Y' ? 'Yes' : 'No',
+        tips: node.getElementsByTagName('TIPS')[0]?.textContent === 'Y' ? 'Yes' : 'No',
+        floating_rate: node.getElementsByTagName('FloatingRate')[0]?.textContent === 'Y' ? 'Yes' : 'No',
+        announcement_date: node.getElementsByTagName('AnnouncementDate')[0]?.textContent || '',
+        settlement_date: node.getElementsByTagName('SettlementDate')[0]?.textContent || '',
+      }));
+    } catch (err) {
+      console.warn('Error parsing tentative XML:', err);
+    }
   }
 
   if (csvResult.status === 'fulfilled') {
     const { headers, rows } = parseCSV(csvResult.value);
     allColumns = headers;
     allData = rows;
-    // Initialize default order for all views if not already set
     ['all', 'bills', 'notesbonds', 'tips'].forEach(v => {
       if (!orderedColumns[v].length) orderedColumns[v] = [...allColumns];
     });
@@ -631,22 +686,28 @@ function init() {
     renderTable();
   });
 
+  // Tab switching
+  document.getElementById('tabHeader').addEventListener('click', e => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    
+    btn.classList.add('active');
+    const tabId = `tab-${btn.dataset.tab}`;
+    document.getElementById(tabId).classList.add('active');
+    
+    if (btn.dataset.tab === 'tentative') {
+      renderTentative();
+      document.getElementById('row-count').textContent = '';
+    } else {
+      renderTable(); // This updates row-count correctly for historical/upcoming
+    }
+  });
+
   // Refresh
   document.getElementById('refreshBtn').addEventListener('click', loadData);
-
-  // Toggle upcoming
-  const upcomingSect = document.getElementById('upcomingSection');
-  const toggleBtn = document.getElementById('toggleUpcomingBtn');
-  const showBtn = document.getElementById('showUpcomingBtn');
-
-  toggleBtn.addEventListener('click', () => {
-    upcomingSect.style.display = 'none';
-    showBtn.style.display = 'inline-block';
-  });
-  showBtn.addEventListener('click', () => {
-    upcomingSect.style.display = 'flex';
-    showBtn.style.display = 'none';
-  });
 
   loadData();
 }

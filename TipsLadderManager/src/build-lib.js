@@ -49,11 +49,11 @@ function calcGapParams(gapYears, tipsMap, settlementDate, refCPI, dara, prelim, 
       if (parseInt(y) > year) laterMatInt += p.annualInterest;
     }
 
-    const pliCredit = pliCreditByGapYear[year] ?? 0;
     const piPerBond = 1000 + 1000 * synCpn * 0.5;
-    const qty = Math.max(0, Math.round((dara - laterMatInt - pliCredit) / piPerBond));
+    // Treat synthetic TIPS like any other rung: subtract LMI and PLI credit before sizing.
+    const qty = Math.max(0, Math.round((dara - laterMatInt - (pliCreditByGapYear[year] ?? 0)) / piPerBond));
     totalCost += qty * 1000;
-    breakdown.push({ year, qty, piPerBond, laterMatInt, dur: synDur });
+    breakdown.push({ year, qty, piPerBond, laterMatInt, pliCredit: pliCreditByGapYear[year] ?? 0, dur: synDur });
     runningSynLMI += qty * 1000 * synCpn; // this gap year's synthetic interest feeds shorter rungs
     count++;
   }
@@ -275,13 +275,9 @@ export function runBuild({ dara, firstYear: firstYearOpt, lastYear, tipsMap, ref
     ({ lowerWeight: future30yLowerWeight, upperWeight: future30yUpperWeight } = bracketWeights(future30yLowerDuration, future30yUpperDuration, future30yParams.avgDuration));
     if (future30yParams.avgDuration > future30yUpperDuration) future30yFellBack = true;
 
-    // Use standard cost logic: synthetic gap cost is basis-adjusted by assumption
-    const future30yLowerCostPerBond = (future30yLowerCoverBond.price ?? 0) / 100 * 1000;
-    const future30yUpperCostPerBond = (future30yUpperCoverBond.price ?? 0) / 100 * 1000;
-    ({ lowerExQty: future30yLowerExQty, upperExQty: future30yUpperExQty } = bracketExcessQtys(future30yParams.future30yTotalCost, future30yLowerWeight, future30yUpperWeight, future30yLowerCostPerBond, future30yUpperCostPerBond));
-
     const future30yLowerCPB = (future30yLowerCoverBond.price ?? 0) / 100 * (refCPI / (future30yLowerCoverBond.baseCpi ?? refCPI)) * 1000;
     const future30yUpperCPB = (future30yUpperCoverBond.price ?? 0) / 100 * (refCPI / (future30yUpperCoverBond.baseCpi ?? refCPI)) * 1000;
+    ({ lowerExQty: future30yLowerExQty, upperExQty: future30yUpperExQty } = bracketExcessQtys(future30yParams.future30yTotalCost, future30yLowerWeight, future30yUpperWeight, future30yLowerCPB, future30yUpperCPB));
     future30yTotalExcessCost = future30yLowerExQty * future30yLowerCPB + future30yUpperExQty * future30yUpperCPB;
     future30yLowerMonth = BL_MONTHS[future30yLowerCoverBond.maturity.getMonth()];
     future30yUpperMonth = BL_MONTHS[future30yUpperCoverBond.maturity.getMonth()];
@@ -331,9 +327,7 @@ export function runBuild({ dara, firstYear: firstYearOpt, lastYear, tipsMap, ref
     upperMonth = BL_MONTHS[upperBond.maturity.getMonth()];
     const lowerCPB = (lowerBond.price ?? 0) / 100 * (refCPI / (lowerBond.baseCpi ?? refCPI)) * 1000;
     const upperCPB = (upperBond.price ?? 0) / 100 * (refCPI / (upperBond.baseCpi ?? refCPI)) * 1000;
-    const lowerCostPerBond = (lowerBond.price ?? 0) / 100 * 1000;
-    const upperCostPerBond = (upperBond.price ?? 0) / 100 * 1000;
-    ({ lowerExQty: lowerExQty, upperExQty: upperExQty } = bracketExcessQtys(gapParams.totalCost, lowerWeight, upperWeight, lowerCostPerBond, upperCostPerBond));
+    ({ lowerExQty: lowerExQty, upperExQty: upperExQty } = bracketExcessQtys(gapParams.totalCost, lowerWeight, upperWeight, lowerCPB, upperCPB));
     totalExcessCost = lowerExQty * lowerCPB + upperExQty * upperCPB;
   }
 
