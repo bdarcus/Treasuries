@@ -8,7 +8,7 @@ import path from 'path';
 
 const TENTATIVE_XML_URL = 'https://home.treasury.gov/system/files/221/Tentative-Auction-Schedule.xml';
 const OUTPUT_FILE = 'TreasuryAuctions/data/tentative_tips.json';
-const R2_KEY = 'Treasuries/tentative_tips.json';
+const R2_KEY = 'TIPS/tentative_tips.json';
 
 // ── R2 upload ─────────────────────────────────────────────────────────────────
 async function uploadToR2(key, body) {
