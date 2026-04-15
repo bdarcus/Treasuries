@@ -123,7 +123,7 @@ function isUpperBracket(d, summary, mode) {
 function cellHtml(col, v, ri, drillKey) {
   const s   = fmtCell(v, col.fmt);
   const cls = fmtCls(v, col.fmt);
-  const align = (col.fmt !== 'str' && col.fmt !== 'fy') ? ' style="text-align:right"' : '';
+  const align = col.fmt === 'fy' ? ' style="text-align:center"' : col.fmt !== 'str' ? ' style="text-align:right"' : '';
   let attr = '';
   if (drillKey) {
     attr = ' class="drillable' + (cls ? ' ' + cls : '') + '" data-row="' + ri + '" data-col="' + drillKey + '"';
@@ -169,7 +169,7 @@ export function renderTable({ details, mode, summary }) {
   }).join('');
 
   const tfootCells = cols.map(col => {
-    const align = (col.fmt !== 'str' && col.fmt !== 'fy') ? ' style="text-align:right"' : '';
+    const align = col.fmt === 'fy' ? ' style="text-align:center"' : col.fmt !== 'str' ? ' style="text-align:right"' : '';
     let s = '';
     if (col.key === 'cusip') {
       s = 'Total';

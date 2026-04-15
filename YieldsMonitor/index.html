@@ -12,11 +12,11 @@
 <link rel="stylesheet" href="../shared/src/portal-theme.css">
 <style>
   /* App-specific overrides — shared base, vars, tabs, buttons, portal-link: portal-theme.css */
-  body { font-size: 13px; padding: 15px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  body { font-size: 15px; padding: 15px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
-  header h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
-  .tz-info { font-size: 11px; color: var(--portal-text-muted); font-weight: 600; background: var(--chip-bg); padding: 2px 8px; border-radius: 4px; }
+  header h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  .tz-info { font-size: 13px; color: var(--portal-text-muted); font-weight: 600; background: var(--chip-bg); padding: 2px 8px; border-radius: 4px; }
 
   .main-layout { display: flex; gap: 15px; flex: 1; min-height: 0; min-width: 0; }
 
@@ -31,11 +31,11 @@
 
   .yield-curve-section { display: flex; gap: 10px; flex: 1; min-height: 0; min-width: 0; }
   .yield-curve-card { background: #fff; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-  .yield-curve-card .yc-title { font-size: 12px; font-weight: 800; color: var(--portal-text-main); margin-bottom: 6px; flex-shrink: 0; }
+  .yield-curve-card .yc-title { font-size: 14px; font-weight: 800; color: var(--portal-text-main); margin-bottom: 6px; flex-shrink: 0; }
   .yield-curve-container { flex: 1; position: relative; min-height: 0; min-width: 0; }
 
   .row-section { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
-  .row-title { font-size: 10px; font-weight: 800; color: var(--portal-text-muted); text-transform: uppercase; margin-left: 5px; letter-spacing: 0.05em; flex-shrink: 0; }
+  .row-title { font-size: 12px; font-weight: 800; color: var(--portal-text-muted); text-transform: uppercase; margin-left: 5px; letter-spacing: 0.05em; flex-shrink: 0; }
 
   .chart-row {
     display: flex;
@@ -64,16 +64,16 @@
   }
 
   .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-shrink: 0; }
-  .chart-title { font-size: 12px; font-weight: 800; color: var(--portal-text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chart-title { font-size: 14px; font-weight: 800; color: var(--portal-text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chart-container { flex: 1; position: relative; min-height: 0; width: 100%; }
 
   /* Size-variant override — portal-theme `button` provides color/hover; these set compact sizing */
-  .btn { padding: 4px 10px; font-size: 11px; }
+  .btn { padding: 4px 10px; font-size: 13px; }
   .btn:hover:not(:disabled) { transform: none; box-shadow: none; }
   .btn-outline { background: #fff; color: var(--portal-text-main); border: 1px solid var(--border-light); }
   .btn-outline:hover:not(:disabled) { background: #f8fafc; transform: none; box-shadow: none; }
 
-  footer { margin-top: 5px; font-size: 10px; color: var(--portal-text-muted); text-align: center; flex-shrink: 0; }
+  footer { margin-top: 5px; font-size: 12px; color: var(--portal-text-muted); text-align: center; flex-shrink: 0; }
 
   /* Custom Scrollbar for Rows */
   .chart-row::-webkit-scrollbar { height: 6px; }
