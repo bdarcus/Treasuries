@@ -289,9 +289,22 @@ function getActiveRows() {
   // Sort
   if (sortCol !== null) {
     const field = sortCol;
+    const fmt = detectFmt(field);
+    const isNumeric = fmt && fmt !== 'date' && fmt !== null;
     rows = [...rows].sort((a, b) => {
       const av = a[field] ?? '';
       const bv = b[field] ?? '';
+      if (isNumeric) {
+        const na = parseFloat(av);
+        const nb = parseFloat(bv);
+        const aEmpty = av === '' || isNaN(na);
+        const bEmpty = bv === '' || isNaN(nb);
+        if (aEmpty && bEmpty) return 0;
+        if (aEmpty) return 1;
+        if (bEmpty) return -1;
+        const cmp = na - nb;
+        return sortAsc ? cmp : -cmp;
+      }
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortAsc ? cmp : -cmp;
     });
