@@ -297,3 +297,5 @@ app.get('/api/status', async (_req, res) => {
 
   res.json({ apps: appsOut, fetchedAt: new Date().toISOString() });
 });
+
+app.listen(PORT, () => console.log(`Dashboard running at http://localhost:${PORT}`));

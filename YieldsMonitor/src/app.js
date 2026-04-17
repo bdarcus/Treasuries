@@ -48,6 +48,7 @@ let activeTab = 'timeseries';
 let syncXAxis = true;
 let isSyncing = false;
 let isUpdatingData = false;
+const yOverrideSyms = new Set();
 
 const ET_YMD_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
 const ET_FULL_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
@@ -99,14 +100,44 @@ function setupTabs() {
 function syncAllChartsX(sourceChart) {
   if (!syncXAxis || isSyncing || isUpdatingData) return;
   isSyncing = true;
-  const xMin = sourceChart.scales.x.min;
-  const xMax = sourceChart.scales.x.max;
+  const xMin = sourceChart.options.scales.x.min ?? sourceChart.scales.x.min;
+  const xMax = sourceChart.options.scales.x.max ?? sourceChart.scales.x.max;
   Object.entries(charts).forEach(([sym, chart]) => {
     if (chart === sourceChart) return;
     chart.options.scales.x.min = xMin;
     chart.options.scales.x.max = xMax;
-    chart.update('none');
-    rescaleYToVisible(chart, sym);
+    if (!yOverrideSyms.has(sym)) rescaleYToVisible(chart, sym);
+    else chart.update('none');
+  });
+  isSyncing = false;
+}
+
+function syncAllCharts(sourceChart) {
+  if (!syncXAxis || isSyncing || isUpdatingData) return;
+  isSyncing = true;
+  const xMin = sourceChart.options.scales.x.min ?? sourceChart.scales.x.min;
+  const xMax = sourceChart.options.scales.x.max ?? sourceChart.scales.x.max;
+  const srcYNew = sourceChart.options.scales.y.min;
+  const srcYOld = sourceChart.scales.y.min;
+  const yDelta = (srcYNew != null && srcYOld != null) ? srcYNew - srcYOld : 0;
+  if (Math.abs(yDelta) > 1e-9) {
+    const srcSym = Object.keys(charts).find(k => charts[k] === sourceChart);
+    if (srcSym) yOverrideSyms.add(srcSym);
+  }
+  Object.entries(charts).forEach(([sym, chart]) => {
+    if (chart === sourceChart) return;
+    chart.options.scales.x.min = xMin;
+    chart.options.scales.x.max = xMax;
+    if (Math.abs(yDelta) > 1e-9) {
+      yOverrideSyms.add(sym);
+      chart.options.scales.y.min = (chart.options.scales.y.min ?? chart.scales.y.min) + yDelta;
+      chart.options.scales.y.max = (chart.options.scales.y.max ?? chart.scales.y.max) + yDelta;
+      chart.update('none');
+    } else if (!yOverrideSyms.has(sym)) {
+      rescaleYToVisible(chart, sym);
+    } else {
+      chart.update('none');
+    }
   });
   isSyncing = false;
 }
@@ -147,7 +178,7 @@ function setupUI() {
     syncChartContainers(); updateAllData();
   }));
   document.getElementById('refreshAll').addEventListener('click', () => updateAllData(true));
-  document.getElementById('resetAllZoom').addEventListener('click', () => Object.values(charts).forEach(c => c.resetZoom()));
+  document.getElementById('resetAllZoom').addEventListener('click', () => { yOverrideSyms.clear(); Object.values(charts).forEach(c => c.resetZoom()); });
 }
 
 function syncChartContainers() {
@@ -182,7 +213,7 @@ function createChartInstance(sym) {
         x: { type: 'time', time: { tooltipFormat: 'MM/dd/yy HH:mm:ss', displayFormats: { hour: 'MM/dd HH:mm', day: 'MMM dd', month: 'MMM yyyy', year: 'yyyy' } }, grid: { color: '#f1f5f9' }, ticks: { autoSkip: true, font: { size: 9, weight: 'bold' }, color: '#000' } },
         y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 9, family: 'monospace', weight: 'bold' }, color: '#000', callback: v => v.toFixed(3) + '%' } }
       },
-      plugins: { legend: { display: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoom: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onZoomComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } }, pan: { enabled: true, mode: 'xy', onPan: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onPanComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } } }, annotation: { annotations: {} }, tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#64748b', titleFont: { size: 11, weight: 'bold' }, bodyColor: '#000', borderColor: '#cbd5e1', borderWidth: 1, padding: 8, bodyFont: { size: 12, weight: 'bold' }, cornerRadius: 6, displayColors: false, callbacks: { title: (items) => { if (!items.length) return ''; const date = new Date(items[0].parsed.x); return date.toLocaleString('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET'; }, label: ctx => `Yield: ${ctx.parsed.y.toFixed(3)}%` } } }
+      plugins: { legend: { display: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoom: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onZoomComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } }, pan: { enabled: true, mode: 'xy', onPan: ({chart}) => { if (syncXAxis) syncAllCharts(chart); }, onPanComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllCharts(chart); } } }, annotation: { annotations: {} }, tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#64748b', titleFont: { size: 11, weight: 'bold' }, bodyColor: '#000', borderColor: '#cbd5e1', borderWidth: 1, padding: 8, bodyFont: { size: 12, weight: 'bold' }, cornerRadius: 6, displayColors: false, callbacks: { title: (items) => { if (!items.length) return ''; const date = new Date(items[0].parsed.x); return date.toLocaleString('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET'; }, label: ctx => `Yield: ${ctx.parsed.y.toFixed(3)}%` } } }
     }
   });
   setupAxisWheelZoom(ctx.canvas, ({chart}) => {
@@ -290,7 +321,7 @@ function snapXMax(date) {
 
 function rescaleYToVisible(chart, sym) {
   const data = rangeData[sym]; if (!data || data.length === 0) return;
-  const xMin = chart.scales.x.min, xMax = chart.scales.x.max;
+  const xMin = chart.options.scales.x.min ?? chart.scales.x.min, xMax = chart.options.scales.x.max ?? chart.scales.x.max;
   const visible = data.filter(p => { const t = +p.x; return t >= xMin && t <= xMax; }); if (visible.length === 0) return;
   const bounds = snapYBounds(Math.min(...visible.map(p=>p.y)), Math.max(...visible.map(p=>p.y)));
   chart.options.scales.y.min = bounds.min; chart.options.scales.y.max = bounds.max; chart.options.scales.y.ticks.stepSize = bounds.step; chart.update('none');
@@ -314,6 +345,7 @@ function updateDynamicTicks(chart, data) {
 }
 
 async function updateAllData(force = false) {
+  yOverrideSyms.clear();
   isUpdatingData = true;
   const statusEl = document.getElementById('fetchStatus'); statusEl.textContent = `Updating...`;
   const allSyms = Object.keys(AVAILABLE_SYMBOLS); let successCount = 0; const tsList = [];
