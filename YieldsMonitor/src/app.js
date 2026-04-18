@@ -49,6 +49,7 @@ let syncXAxis = true;
 let isSyncing = false;
 let isUpdatingData = false;
 const yOverrideSyms = new Set();
+const panStartY = {}; // sym -> {min, max} at pan gesture start; cleared on pan end
 
 const ET_YMD_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
 const ET_FULL_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
@@ -117,27 +118,48 @@ function syncAllCharts(sourceChart) {
   isSyncing = true;
   const xMin = sourceChart.options.scales.x.min ?? sourceChart.scales.x.min;
   const xMax = sourceChart.options.scales.x.max ?? sourceChart.scales.x.max;
-  const srcYNew = sourceChart.options.scales.y.min;
-  const srcYOld = sourceChart.scales.y.min;
-  const yDelta = (srcYNew != null && srcYOld != null) ? srcYNew - srcYOld : 0;
-  if (Math.abs(yDelta) > 1e-9) {
-    const srcSym = Object.keys(charts).find(k => charts[k] === sourceChart);
-    if (srcSym) yOverrideSyms.add(srcSym);
-  }
+  const srcSym = Object.keys(charts).find(k => charts[k] === sourceChart);
+  const srcStart = srcSym ? panStartY[srcSym] : null;
+  const srcYCurrent = sourceChart.options.scales.y.min ?? sourceChart.scales.y.min;
+  const yDelta = (srcStart != null && srcYCurrent != null) ? srcYCurrent - srcStart.min : 0;
+  if (Math.abs(yDelta) > 1e-9 && srcSym) yOverrideSyms.add(srcSym);
   Object.entries(charts).forEach(([sym, chart]) => {
     if (chart === sourceChart) return;
     chart.options.scales.x.min = xMin;
     chart.options.scales.x.max = xMax;
-    if (Math.abs(yDelta) > 1e-9) {
+    if (Math.abs(yDelta) > 1e-9 && panStartY[sym]) {
       yOverrideSyms.add(sym);
-      chart.options.scales.y.min = (chart.options.scales.y.min ?? chart.scales.y.min) + yDelta;
-      chart.options.scales.y.max = (chart.options.scales.y.max ?? chart.scales.y.max) + yDelta;
+      chart.options.scales.y.min = panStartY[sym].min + yDelta;
+      chart.options.scales.y.max = panStartY[sym].max + yDelta;
       chart.update('none');
     } else if (!yOverrideSyms.has(sym)) {
       rescaleYToVisible(chart, sym);
     } else {
       chart.update('none');
     }
+  });
+  isSyncing = false;
+}
+
+function syncAllChartsYZoom(sourceChart, factor) {
+  if (!syncXAxis || isSyncing || isUpdatingData) return;
+  isSyncing = true;
+  Object.entries(charts).forEach(([sym, chart]) => {
+    if (chart === sourceChart) return;
+    yOverrideSyms.add(sym);
+    chart.zoom({ y: factor });
+    const yMin = chart.scales.y.min, yMax = chart.scales.y.max;
+    const b = snapYBounds(yMin, yMax), step = b.step;
+    let min, max;
+    if (factor > 1) {
+      min = Math.ceil(Math.round(yMin / step * 1e9) / 1e9) * step;
+      max = Math.floor(Math.round(yMax / step * 1e9) / 1e9) * step;
+      if (min >= max) { min = b.min; max = b.max; }
+    } else { min = b.min; max = b.max; }
+    chart.options.scales.y.min = min;
+    chart.options.scales.y.max = max;
+    chart.options.scales.y.ticks.stepSize = step;
+    chart.update('none');
   });
   isSyncing = false;
 }
@@ -213,13 +235,13 @@ function createChartInstance(sym) {
         x: { type: 'time', time: { tooltipFormat: 'MM/dd/yy HH:mm:ss', displayFormats: { hour: 'MM/dd HH:mm', day: 'MMM dd', month: 'MMM yyyy', year: 'yyyy' } }, grid: { color: '#f1f5f9' }, ticks: { autoSkip: true, font: { size: 9, weight: 'bold' }, color: '#000' } },
         y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 9, family: 'monospace', weight: 'bold' }, color: '#000', callback: v => v.toFixed(3) + '%' } }
       },
-      plugins: { legend: { display: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoom: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onZoomComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } }, pan: { enabled: true, mode: 'xy', onPan: ({chart}) => { if (syncXAxis) syncAllCharts(chart); }, onPanComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllCharts(chart); } } }, annotation: { annotations: {} }, tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#64748b', titleFont: { size: 11, weight: 'bold' }, bodyColor: '#000', borderColor: '#cbd5e1', borderWidth: 1, padding: 8, bodyFont: { size: 12, weight: 'bold' }, cornerRadius: 6, displayColors: false, callbacks: { title: (items) => { if (!items.length) return ''; const date = new Date(items[0].parsed.x); return date.toLocaleString('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET'; }, label: ctx => `Yield: ${ctx.parsed.y.toFixed(3)}%` } } }
+      plugins: { legend: { display: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoom: ({chart}) => { if (syncXAxis) syncAllChartsX(chart); }, onZoomComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllChartsX(chart); } }, pan: { enabled: true, mode: 'xy', onPanStart: ({chart}) => { Object.entries(charts).forEach(([s, c]) => { panStartY[s] = { min: c.scales.y.min, max: c.scales.y.max }; }); }, onPan: ({chart}) => { if (syncXAxis) syncAllCharts(chart); }, onPanComplete: ({chart}) => { if (!syncXAxis) rescaleYToVisible(chart, sym); else syncAllCharts(chart); Object.keys(panStartY).forEach(k => delete panStartY[k]); } } }, annotation: { annotations: {} }, tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#64748b', titleFont: { size: 11, weight: 'bold' }, bodyColor: '#000', borderColor: '#cbd5e1', borderWidth: 1, padding: 8, bodyFont: { size: 12, weight: 'bold' }, cornerRadius: 6, displayColors: false, callbacks: { title: (items) => { if (!items.length) return ''; const date = new Date(items[0].parsed.x); return date.toLocaleString('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET'; }, label: ctx => `Yield: ${ctx.parsed.y.toFixed(3)}%` } } }
     }
   });
   setupAxisWheelZoom(ctx.canvas, ({chart}) => {
     if (syncXAxis) syncAllChartsX(chart);
     else rescaleYToVisible(chart, sym);
-  }, ({chart, factor}) => { const yMin = chart.scales.y.min, yMax = chart.scales.y.max, b = snapYBounds(yMin, yMax), step = b.step; let min, max; if (factor > 1) { min = Math.ceil(Math.round(yMin / step * 1e9) / 1e9) * step; max = Math.floor(Math.round(yMax / step * 1e9) / 1e9) * step; if (min >= max) { min = b.min; max = b.max; } } else { min = b.min; max = b.max; } chart.options.scales.y.min = min; chart.options.scales.y.max = max; chart.options.scales.y.ticks.stepSize = step; chart.update('none'); });
+  }, ({chart, factor}) => { const yMin = chart.scales.y.min, yMax = chart.scales.y.max, b = snapYBounds(yMin, yMax), step = b.step; let min, max; if (factor > 1) { min = Math.ceil(Math.round(yMin / step * 1e9) / 1e9) * step; max = Math.floor(Math.round(yMax / step * 1e9) / 1e9) * step; if (min >= max) { min = b.min; max = b.max; } } else { min = b.min; max = b.max; } chart.options.scales.y.min = min; chart.options.scales.y.max = max; chart.options.scales.y.ticks.stepSize = step; chart.update('none'); yOverrideSyms.add(sym); if (syncXAxis) syncAllChartsYZoom(chart, factor); });
   new ResizeObserver(() => { if (charts[sym]) charts[sym].resize(); }).observe(document.getElementById(`card-${sym}`));
 }
 
